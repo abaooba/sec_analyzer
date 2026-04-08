@@ -1,0 +1,375 @@
+import re
+
+from frontend.app.parse_filings import extract_latest_filing_sections, combine_section_texts
+from frontend.app.rss_ingest import search_company_rss_news
+
+
+GEOPOLITICAL_EVENT_KEYWORDS = {
+    "tariffs_trade": [
+        r"\btariff\b",
+        r"\btariffs\b",
+        r"trade war",
+        r"trade restrictions",
+        r"trade tensions",
+        r"import duties",
+        r"export duties",
+        r"customs duties",
+        r"trade barrier",
+    ],
+    "sanctions_export_controls": [
+        r"\bsanctions\b",
+        r"export controls",
+        r"\bblacklist\b",
+        r"entity list",
+        r"restricted exports",
+        r"licensing restrictions",
+        r"license denial",
+        r"export license",
+        r"national security restrictions",
+    ],
+    "war_conflict": [
+        r"\bwar\b",
+        r"\bconflict\b",
+        r"\bmilitary\b",
+        r"\binvasion\b",
+        r"\bmissile\b",
+        r"\bhostilities\b",
+        r"\battack\b",
+        r"armed conflict",
+        r"cross-strait",
+    ],
+    "supply_chain_disruption": [
+        r"supply chain",
+        r"\bmanufacturing\b",
+        r"\bsupplier\b",
+        r"\bsuppliers\b",
+        r"\bshipping\b",
+        r"\blogistics\b",
+        r"\bdisruption\b",
+        r"\bfactory\b",
+        r"\bassembly\b",
+        r"lead times",
+        r"capacity constraints",
+        r"supply constraints",
+    ],
+    "china_exposure": [
+        r"\bchina\b",
+        r"\bchinese\b",
+        r"\bbeijing\b",
+        r"\btaiwan\b",
+        r"\btaiwanese\b",
+        r"taiwan strait",
+        r"export controls",
+        r"semiconductor restrictions",
+    ],
+    "regulation_antitrust": [
+        r"\bregulation\b",
+        r"\bregulatory\b",
+        r"\bantitrust\b",
+        r"\binvestigation\b",
+        r"\bcompliance\b",
+        r"competition authority",
+        r"government review",
+        r"state aid",
+    ],
+    "macro_demand": [
+        r"\bslump\b",
+        r"\bslowdown\b",
+        r"\brecession\b",
+        r"\binflation\b",
+        r"interest rates",
+        r"consumer demand",
+        r"pricing pressure",
+        r"\bmargins\b",
+        r"industrial demand",
+        r"cyclical demand",
+    ],
+    "middle_east_energy_shipping": [
+        r"\biran\b",
+        r"\bisrael\b",
+        r"\bgaza\b",
+        r"\bhamas\b",
+        r"\bhezbollah\b",
+        r"middle east",
+        r"persian gulf",
+        r"strait of hormuz",
+        r"red sea",
+        r"\bhouthi\b",
+        r"\byemen\b",
+        r"oil prices",
+        r"energy prices",
+        r"\blng\b",
+        r"crude oil",
+        r"\btanker\b",
+        r"shipping route",
+        r"shipping disruption",
+    ],
+}
+
+GEOPOLITICAL_WEIGHTS = {
+    "tariffs_trade": 1.4,
+    "sanctions_export_controls": 1.5,
+    "war_conflict": 1.3,
+    "supply_chain_disruption": 1.4,
+    "china_exposure": 1.5,
+    "regulation_antitrust": 1.3,
+    "macro_demand": 1.1,
+    "middle_east_energy_shipping": 1.5,
+}
+
+EXPOSURE_KEYWORDS = {
+    "tariffs_trade": [
+        r"\btariffs\b",
+        r"trade restrictions",
+        r"international operations",
+        r"regional economic conditions",
+        r"customs duties",
+        r"cross-border",
+    ],
+    "sanctions_export_controls": [
+        r"\bsanctions\b",
+        r"export controls",
+        r"trade restrictions",
+        r"licensing restrictions",
+        r"export license",
+        r"restricted jurisdictions",
+    ],
+    "war_conflict": [
+        r"\bgeopolitical\b",
+        r"\bwar\b",
+        r"international operations",
+        r"armed conflict",
+        r"military conflict",
+        r"geopolitical tensions",
+    ],
+    "supply_chain_disruption": [
+        r"supply chain",
+        r"\bsupplier\b",
+        r"\bsuppliers\b",
+        r"\bmanufacturing\b",
+        r"\bassembly\b",
+        r"\blogistics\b",
+        r"\bcomponent\b",
+        r"\bsemiconductor\b",
+        r"\bproduction\b",
+        r"lead times",
+        r"capacity constraints",
+    ],
+    "china_exposure": [
+        r"\bchina\b",
+        r"\bchinese\b",
+        r"\btaiwan\b",
+        r"\basia\b",
+        r"international operations",
+        r"sales outside the u.s.",
+        r"supplier facilities",
+        r"manufacturing and assembly sites",
+        r"taiwan strait",
+    ],
+    "regulation_antitrust": [
+        r"\bregulation\b",
+        r"\bregulatory\b",
+        r"\bcompliance\b",
+        r"\bgovernment\b",
+        r"\bantitrust\b",
+        r"export controls",
+        r"competition authority",
+        r"licensing restrictions",
+    ],
+    "macro_demand": [
+        r"\binflation\b",
+        r"interest rates",
+        r"consumer confidence",
+        r"\bspending\b",
+        r"economic conditions",
+        r"\brecession\b",
+        r"\bcyclical\b",
+        r"\bdemand\b",
+        r"pricing pressure",
+        r"foreign exchange",
+    ],
+    "middle_east_energy_shipping": [
+        r"oil prices",
+        r"energy prices",
+        r"\bshipping\b",
+        r"\blogistics\b",
+        r"supply chain",
+        r"international operations",
+        r"regional economic conditions",
+        r"\binflation\b",
+        r"currency fluctuations",
+    ],
+}
+
+
+def normalize_text(text: str) -> str:
+    if not text:
+        return ""
+    return text.lower()
+
+
+def count_keyword_matches(pattern: str, text: str) -> int:
+    return len(re.findall(pattern, text))
+
+
+def matches_any_pattern(text: str, patterns: list[str]) -> bool:
+    return any(re.search(pattern, text) for pattern in patterns)
+
+
+def soften_count(count: int) -> int:
+    if count <= 0:
+        return 0
+    if count <= 2:
+        return 1
+    if count <= 5:
+        return 2
+    return 3
+
+
+def count_keywords(text: str, keyword_map: dict) -> dict:
+    normalized = normalize_text(text)
+    results = {}
+
+    for category, keywords in keyword_map.items():
+        keyword_hits = {}
+        raw_total = 0
+        softened_total = 0
+
+        for keyword in keywords:
+            count = count_keyword_matches(keyword, normalized)
+            if count > 0:
+                keyword_hits[keyword] = count
+                raw_total += count
+                softened_total += soften_count(count)
+
+        results[category] = {
+            "raw_total_hits": raw_total,
+            "softened_total_hits": softened_total,
+            "keyword_hits": keyword_hits,
+        }
+
+    return results
+
+
+def build_article_text(article: dict) -> str:
+    title = article.get("title") or ""
+    summary = article.get("summary") or ""
+    return f"{title} {summary}"
+
+
+def classify_articles(articles: list[dict]) -> dict:
+    category_articles = {category: [] for category in GEOPOLITICAL_EVENT_KEYWORDS.keys()}
+    category_counts = {category: 0 for category in GEOPOLITICAL_EVENT_KEYWORDS.keys()}
+
+    for article in articles:
+        text = normalize_text(build_article_text(article))
+
+        for category, keywords in GEOPOLITICAL_EVENT_KEYWORDS.items():
+            if matches_any_pattern(text, keywords):
+                category_counts[category] += 1
+
+                if len(category_articles[category]) < 5:
+                    category_articles[category].append(
+                        {
+                            "title": article.get("title"),
+                            "link": article.get("link"),
+                            "source": article.get("source"),
+                            "published": article.get("published"),
+                        }
+                    )
+
+    return {
+        "category_counts": category_counts,
+        "category_articles": category_articles,
+    }
+
+
+def extract_company_exposure(cik: str) -> dict:
+    sections = extract_latest_filing_sections(
+        cik,
+        preferred_forms=("20-F", "10-K", "40-F", "10-Q", "6-K", "8-K"),
+    )
+
+    filing_text = combine_section_texts(
+        sections,
+        "risk_factors",
+        "mdna",
+        "business",
+        min_chars=300,
+    ).strip()
+
+    if not filing_text:
+        filing_text = sections.get("full_text") or ""
+
+    return {
+        "filing_form_used": sections.get("form"),
+        "filing_date_used": sections.get("filing_date"),
+        "keyword_results": count_keywords(filing_text, EXPOSURE_KEYWORDS),
+    }
+
+
+def score_geopolitical_impact(
+    cik: str,
+    company_name: str,
+    ticker: str | None = None,
+    extra_terms: list[str] | None = None,
+) -> dict:
+    articles = search_company_rss_news(
+        company_name=company_name,
+        ticker=ticker,
+        extra_terms=extra_terms
+        or [
+            "tariffs",
+            "china",
+            "taiwan",
+            "supply chain",
+            "regulation",
+            "antitrust",
+            "iran",
+            "middle east",
+            "strait of hormuz",
+            "red sea",
+            "oil prices",
+            "shipping disruption",
+            "export controls",
+        ],
+    )
+
+    article_results = classify_articles(articles)
+    exposure_bundle = extract_company_exposure(cik)
+    exposure_results = exposure_bundle["keyword_results"]
+
+    category_scores = {}
+    total_score = 0
+
+    for category in GEOPOLITICAL_EVENT_KEYWORDS.keys():
+        event_hits = article_results["category_counts"].get(category, 0)
+        exposure_hits = min(
+            exposure_results.get(category, {}).get("softened_total_hits", 0),
+            4,
+        )
+
+        event_signal = soften_count(event_hits)
+        overlap_signal = min(event_signal, exposure_hits)
+        weighted_score = (
+            event_signal * 0.8
+            + exposure_hits * 0.9
+            + overlap_signal * 1.2
+        ) * GEOPOLITICAL_WEIGHTS.get(category, 1.0)
+        category_score = min(round(weighted_score, 2), 15)
+
+        category_scores[category] = category_score
+        total_score += category_score
+
+    total_score = min(round(total_score, 2), 100)
+
+    return {
+        "total_geopolitical_score": total_score,
+        "category_scores": category_scores,
+        "news_category_counts": article_results["category_counts"],
+        "news_evidence": article_results["category_articles"],
+        "filing_exposure": exposure_results,
+        "filing_form_used": exposure_bundle["filing_form_used"],
+        "filing_date_used": exposure_bundle["filing_date_used"],
+        "article_count": len(articles),
+    }
