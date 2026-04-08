@@ -1,10 +1,11 @@
 from pathlib import Path
+
 from sqlalchemy import select
 
-from frontend.app.config import settings
-from frontend.app.db import SessionLocal
-from frontend.app.models import Company, Filing
-from frontend.app.sec_client import SECClient
+from app.config import settings
+from app.db import SessionLocal
+from app.models import Company, Filing
+from app.sec_client import SECClient
 
 
 TARGET_FORMS = {"10-K", "10-Q", "8-K", "20-F", "6-K", "40-F"}
@@ -51,7 +52,6 @@ def ingest_company(cik: str):
             session.add(company)
             print("Added new company to database.")
         else:
-            # keep company metadata fresh
             existing_company.ticker = ticker
             existing_company.name = submissions["name"]
             print("Company already exists in database. Metadata refreshed.")
@@ -81,7 +81,7 @@ def ingest_company(cik: str):
 
             stmt = select(Filing).where(
                 Filing.cik == company_cik,
-                Filing.accession_no == accession_no
+                Filing.accession_no == accession_no,
             )
             existing_filing = session.execute(stmt).scalar_one_or_none()
 
@@ -155,3 +155,43 @@ def ingest_company(cik: str):
         print(f"Existing filings skipped: {skipped_count}")
         print(f"Existing filings updated: {updated_count}")
         print(f"Failed filings: {failed_count}")
+
+
+def delete_local_filings_for_company(cik: str):
+    company_cik = str(cik).zfill(10)
+
+    with SessionLocal() as session:
+        stmt = select(Filing).where(Filing.cik == company_cik)
+        filings = session.execute(stmt).scalars().all()
+
+        deleted_count = 0
+        missing_count = 0
+        failed_count = 0
+
+        for filing in filings:
+            if not filing.local_path:
+                continue
+
+            path = Path(filing.local_path)
+
+            try:
+                if path.exists() and path.is_file():
+                    path.unlink()
+                    deleted_count += 1
+                    print(f"Deleted local filing: {path}")
+                else:
+                    missing_count += 1
+                    print(f"File already missing: {path}")
+
+                filing.local_path = None
+
+            except Exception as e:
+                failed_count += 1
+                print(f"Could not delete {path}: {e}")
+
+        session.commit()
+
+        print("\nLocal filing cleanup complete.")
+        print(f"Deleted files: {deleted_count}")
+        print(f"Already missing: {missing_count}")
+        print(f"Delete failures: {failed_count}")
