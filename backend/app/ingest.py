@@ -2,10 +2,10 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from app.config import settings
-from app.db import SessionLocal
-from app.models import Company, Filing
-from app.sec_client import SECClient
+from .config import resolve_storage_path, settings
+from .db import SessionLocal
+from .models import Company, Filing
+from .sec_client import SECClient
 
 
 TARGET_FORMS = {"10-K", "10-Q", "8-K", "20-F", "6-K", "40-F"}
@@ -89,15 +89,18 @@ def ingest_company(cik: str):
                 print("Filing already exists in database.")
 
                 changed = False
+                resolved_existing_path = None
+                if existing_filing.local_path:
+                    resolved_existing_path = resolve_storage_path(existing_filing.local_path)
 
                 if not existing_filing.filing_url:
                     existing_filing.filing_url = filing_url
                     changed = True
                     print(f"Updated missing filing_url: {filing_url}")
 
-                if not existing_filing.local_path:
+                if not existing_filing.local_path or not resolved_existing_path or not resolved_existing_path.exists():
                     try:
-                        print(f"Downloading missing filing HTML from: {filing_url}")
+                        print(f"Downloading filing HTML from: {filing_url}")
                         html = client.download_filing_html(filing_url)
 
                         local_filename = f"{company_cik}_{accession_no}_{primary_doc}"
@@ -107,12 +110,12 @@ def ingest_company(cik: str):
                         existing_filing.local_path = str(local_path)
                         changed = True
                         downloaded_count += 1
-                        print(f"Saved missing local file to: {local_path}")
+                        print(f"Saved local file to: {local_path}")
                     except Exception as e:
                         failed_count += 1
                         print(f"Failed to download existing filing: {e}")
                 else:
-                    print(f"Local file already exists: {existing_filing.local_path}")
+                    print(f"Local file already exists: {resolved_existing_path}")
 
                 if changed:
                     updated_count += 1
@@ -173,6 +176,8 @@ def delete_local_filings_for_company(cik: str):
                 continue
 
             path = Path(filing.local_path)
+            if filing.local_path:
+                path = resolve_storage_path(filing.local_path)
 
             try:
                 if path.exists() and path.is_file():
@@ -183,7 +188,7 @@ def delete_local_filings_for_company(cik: str):
                     missing_count += 1
                     print(f"File already missing: {path}")
 
-                filing.local_path = None
+                filing.local_path = ""
 
             except Exception as e:
                 failed_count += 1

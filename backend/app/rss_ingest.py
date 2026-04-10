@@ -1,7 +1,7 @@
 from urllib.parse import quote_plus
 import re
 
-from frontend.app.rss_client import RSSClient
+from .rss_client import RSSClient
 
 
 def build_google_news_rss_url(query: str) -> str:

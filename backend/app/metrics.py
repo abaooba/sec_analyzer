@@ -1,7 +1,7 @@
 from sqlalchemy import select
 
-from frontend.app.db import SessionLocal
-from frontend.app.models import CompanyFact
+from .db import SessionLocal
+from .models import CompanyFact
 
 ANNUAL_FORMS = {"10-K", "20-F", "40-F"}
 INTERIM_FORMS = {"10-Q", "6-K"}

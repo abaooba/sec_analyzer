@@ -1,5 +1,6 @@
 import httpx
-from frontend.app.config import settings
+
+from .config import settings
 
 BASE_DATA_URL = "https://data.sec.gov"
 BASE_ARCHIVES_URL = "https://www.sec.gov/Archives/edgar/data"

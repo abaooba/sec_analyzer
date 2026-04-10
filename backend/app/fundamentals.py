@@ -1,8 +1,8 @@
 from sqlalchemy import select
 
-from frontend.app.db import SessionLocal
-from frontend.app.models import CompanyFact
-from frontend.app.sec_client import SECClient
+from .db import SessionLocal
+from .models import CompanyFact
+from .sec_client import SECClient
 
 TARGET_TAGS = {
     "us-gaap": {

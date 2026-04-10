@@ -1,5 +1,6 @@
 import httpx
-from frontend.app.config import settings
+
+from .config import settings
 
 SEC_COMPANY_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 

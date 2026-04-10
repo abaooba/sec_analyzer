@@ -1,4 +1,4 @@
-from frontend.app.metrics import compute_basic_snapshot
+from ..metrics import compute_basic_snapshot
 
 
 CATEGORY_CAP = 20

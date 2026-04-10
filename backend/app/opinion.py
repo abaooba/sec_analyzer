@@ -1,10 +1,10 @@
-from frontend.app.scoring.financials import score_financial_quality
-from frontend.app.parse_filings import extract_latest_annual_sections, choose_section_text
-from frontend.app.scoring.risk import score_risk_text
-from frontend.app.scoring.business_model import score_business_model_text
-from frontend.app.scoring.moat import score_moat_text
-from frontend.app.change_detection import detect_filing_changes
-from frontend.app.scoring.geopolitics import score_geopolitical_impact
+from .change_detection import detect_filing_changes
+from .parse_filings import extract_latest_annual_sections, choose_section_text
+from .scoring.business_model import score_business_model_text
+from .scoring.financials import score_financial_quality
+from .scoring.geopolitics import score_geopolitical_impact
+from .scoring.moat import score_moat_text
+from .scoring.risk import score_risk_text
 
 
 def clamp_overall_score(score: float) -> float:

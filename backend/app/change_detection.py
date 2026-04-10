@@ -1,16 +1,16 @@
 from sqlalchemy import select
 
-from frontend.app.db import SessionLocal
-from frontend.app.models import Filing
-from frontend.app.parse_filings import (
+from .db import SessionLocal
+from .models import Filing
+from .parse_filings import (
     load_filing_html,
     filing_html_to_text,
     extract_key_sections,
     choose_section_text,
 )
-from frontend.app.scoring.risk import score_risk_text
-from frontend.app.scoring.business_model import score_business_model_text
-from frontend.app.scoring.moat import score_moat_text
+from .scoring.business_model import score_business_model_text
+from .scoring.moat import score_moat_text
+from .scoring.risk import score_risk_text
 
 
 ANNUAL_FORMS = ("10-K", "20-F", "40-F")

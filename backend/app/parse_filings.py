@@ -6,8 +6,9 @@ from typing import Iterable
 
 from sqlalchemy import select
 
-from frontend.app.db import SessionLocal
-from frontend.app.models import Filing
+from .config import resolve_storage_path
+from .db import SessionLocal
+from .models import Filing
 
 
 ANNUAL_FORMS = ("20-F", "10-K", "40-F")
@@ -19,7 +20,7 @@ def load_filing_html(local_path: str | None) -> str:
     if not local_path:
         return ""
 
-    path = Path(local_path)
+    path = resolve_storage_path(local_path)
     if not path.exists():
         return ""
 
@@ -73,13 +74,19 @@ def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _looks_like_table_of_contents(text: str) -> bool:
+    preview = (text or "")[:800].lower()
+    item_hits = re.findall(r"\bitem\s*\d+[a-z]?\b", preview)
+    return len(item_hits) >= 3
+
+
 def _extract_section_candidate(
     text: str,
     start_index: int,
     end_patterns: Iterable[str],
     *,
     max_chars: int,
-    min_end_search_offset: int = 500,
+    min_end_search_offset: int = 100,
 ) -> str:
     search_region = text[start_index : start_index + max_chars]
     if not search_region:
@@ -114,54 +121,69 @@ def _find_section(
     if not text:
         return ""
 
-    start_matches = []
+    fallback_candidates = []
+
     for pattern in start_patterns:
-        start_matches.extend(re.finditer(pattern, text, flags=re.IGNORECASE))
-
-    if not start_matches:
-        return ""
-
-    candidates = []
-    seen_starts = []
-
-    for match in sorted(start_matches, key=lambda item: item.start()):
-        start_index = match.start()
-
-        if any(abs(start_index - seen_start) < 250 for seen_start in seen_starts):
+        matches = list(re.finditer(pattern, text, flags=re.IGNORECASE))
+        if not matches:
             continue
 
-        section = _extract_section_candidate(
-            text,
-            start_index,
-            end_patterns,
-            max_chars=max_chars,
-        )
-        if not section:
+        candidates = []
+        seen_starts = []
+
+        for match in sorted(matches, key=lambda item: item.start()):
+            start_index = match.start()
+
+            if any(abs(start_index - seen_start) < 250 for seen_start in seen_starts):
+                continue
+
+            section = _extract_section_candidate(
+                text,
+                start_index,
+                end_patterns,
+                max_chars=max_chars,
+            )
+            if not section:
+                continue
+            if _looks_like_table_of_contents(section):
+                continue
+
+            candidates.append(
+                {
+                    "start_index": start_index,
+                    "text": section,
+                    "word_count": len(section.split()),
+                }
+            )
+            seen_starts.append(start_index)
+
+        if not candidates:
             continue
 
-        candidates.append(
-            {
-                "start_index": start_index,
-                "text": section,
-                "word_count": len(section.split()),
-            }
-        )
-        seen_starts.append(start_index)
+        substantive_candidates = [
+            candidate for candidate in candidates
+            if candidate["word_count"] >= min_words
+        ]
 
-    if not candidates:
+        ranked_candidates = substantive_candidates or candidates
+        best_candidate = max(
+            ranked_candidates,
+            key=lambda candidate: (candidate["word_count"], candidate["start_index"]),
+        )
+
+        if substantive_candidates:
+            return best_candidate["text"]
+
+        fallback_candidates.extend(candidates)
+
+    if not fallback_candidates:
         return ""
 
-    substantive_candidates = [
-        candidate for candidate in candidates
-        if candidate["word_count"] >= min_words
-    ]
-
-    ranked_candidates = substantive_candidates or candidates
-    best_candidate = max(
-        ranked_candidates,
+    best_fallback = max(
+        fallback_candidates,
         key=lambda candidate: (candidate["word_count"], candidate["start_index"]),
     )
-    return best_candidate["text"]
+    return best_fallback["text"]
 
 
 def _extract_business(text: str) -> str:
@@ -197,15 +219,13 @@ def _extract_risk_factors(text: str) -> str:
         r"\bkey risks\b",
     ]
     end_patterns = [
-        r"\bitem\s*1b\b",
-        r"\bitem\s*2\b",
-        r"\bitem\s*4\b",
-        r"\binformation on the company\b",
-        r"\bunresolved staff comments\b",
-        r"\bproperties\b",
-        r"\boperating and financial review\b",
-        r"\bmanagement[’'`s\s]+discussion and analysis\b",
-        r"\bfinancial review\b",
+        r"\bitem\s*1b[\.\-:\s]+unresolved staff comments\b",
+        r"\bitem\s*1c[\.\-:\s]+cybersecurity\b",
+        r"\bitem\s*2[\.\-:\s]+properties\b",
+        r"\bitem\s*3[\.\-:\s]+legal proceedings\b",
+        r"\bitem\s*4[\.\-:\s]+mine safety disclosures\b",
+        r"\bitem\s*4[\.\-:\s]+information on the company\b",
+        r"\bitem\s*4a\b",
     ]
     return _find_section(text, start_patterns, end_patterns)
 

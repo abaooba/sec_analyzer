@@ -1,7 +1,7 @@
 import re
 
-from frontend.app.parse_filings import extract_latest_filing_sections, combine_section_texts
-from frontend.app.rss_ingest import search_company_rss_news
+from ..parse_filings import extract_latest_filing_sections, combine_section_texts
+from ..rss_ingest import search_company_rss_news
 
 
 GEOPOLITICAL_EVENT_KEYWORDS = {
@@ -314,26 +314,29 @@ def score_geopolitical_impact(
     ticker: str | None = None,
     extra_terms: list[str] | None = None,
 ) -> dict:
-    articles = search_company_rss_news(
-        company_name=company_name,
-        ticker=ticker,
-        extra_terms=extra_terms
-        or [
-            "tariffs",
-            "china",
-            "taiwan",
-            "supply chain",
-            "regulation",
-            "antitrust",
-            "iran",
-            "middle east",
-            "strait of hormuz",
-            "red sea",
-            "oil prices",
-            "shipping disruption",
-            "export controls",
-        ],
-    )
+    try:
+        articles = search_company_rss_news(
+            company_name=company_name,
+            ticker=ticker,
+            extra_terms=extra_terms
+            or [
+                "tariffs",
+                "china",
+                "taiwan",
+                "supply chain",
+                "regulation",
+                "antitrust",
+                "iran",
+                "middle east",
+                "strait of hormuz",
+                "red sea",
+                "oil prices",
+                "shipping disruption",
+                "export controls",
+            ],
+        )
+    except Exception:
+        articles = []
 
     article_results = classify_articles(articles)
     exposure_bundle = extract_company_exposure(cik)
