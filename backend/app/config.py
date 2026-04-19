@@ -47,6 +47,7 @@ class Settings(BaseModel):
     max_requests_per_second: int = Field(default=int(os.getenv("MAX_REQUESTS_PER_SECOND", "5")))
     news_api_key: str = Field(default=os.getenv("NEWS_API_KEY", ""))
     news_api_base_url: str = Field(default=os.getenv("NEWS_API_BASE_URL", "https://newsapi.org/v2"))
+    groq_api_key: str = Field(default=os.getenv("GROQ_API_KEY", ""))
 
 
 settings = Settings()   

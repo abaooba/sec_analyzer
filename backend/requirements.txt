@@ -1,0 +1,9 @@
+groq
+httpx
+sqlalchemy
+pydantic
+python-dotenv
+feedparser
+trafilatura
+dateparser
+tld

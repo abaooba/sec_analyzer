@@ -1,4 +1,5 @@
 from .change_detection import detect_filing_changes
+from .llm_analysis import generate_llm_analysis
 from .parse_filings import extract_latest_annual_sections, choose_section_text
 from .scoring.business_model import score_business_model_text
 from .scoring.financials import score_financial_quality
@@ -236,7 +237,7 @@ def build_full_opinion(
         geopolitical_result,
     )
 
-    return {
+    opinion = {
         "company_cik": normalized_cik,
         "company_name": company_name,
         "ticker": ticker,
@@ -260,4 +261,12 @@ def build_full_opinion(
             "geopolitical": geopolitical_result,
             "change_detection": change_result,
         },
+        "llm_analysis": None,
     }
+
+    print("\nGenerating AI analysis...", flush=True)
+    llm_result = generate_llm_analysis(company_name, ticker, opinion, sections)
+    if llm_result:
+        opinion["llm_analysis"] = llm_result.model_dump()
+
+    return opinion

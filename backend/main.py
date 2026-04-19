@@ -135,6 +135,28 @@ def main():
 
         print_dict_section("Financial Snapshot", formatted_financials)
 
+        llm = result.get("llm_analysis")
+        if llm:
+            print("\n" + "=" * 60)
+            print("AI ANALYSIS (Claude Opus 4.7)")
+            print("=" * 60)
+
+            print_section_title("Investment Thesis")
+            print(llm.get("investment_thesis", ""))
+
+            print_section_title("Enhanced Summary")
+            print(llm.get("enhanced_summary", ""))
+
+            print_list_section("Key Risks", llm.get("key_risks", []))
+            print_list_section("Key Strengths", llm.get("key_strengths", []))
+
+            red_flags = llm.get("red_flags", [])
+            if red_flags:
+                print_list_section("Red Flags", red_flags)
+
+            print_section_title("Score Commentary")
+            print(llm.get("score_commentary", ""))
+
     finally:
         delete_local_filings_for_company(normalized_cik)
 
