@@ -25,12 +25,12 @@ class AnalyzeRequest(BaseModel):
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
     init_db()
-    match = find_company_match(req.company_name)
+    match = find_company_match(req.company_name, req.ticker)
     if not match:
         return {"error": f"Could not find company: {req.company_name}"}
-    
-    cik = match["cik"].zfill(10)
-    company_name = match["title"]
+
+    cik = match["cik"]
+    company_name = match["company_name"]
     ticker = req.ticker or match.get("ticker", "")
 
     try:
