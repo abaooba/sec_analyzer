@@ -4,4 +4,4 @@ backend/sec_analyzer.db
 backend/data/raw_filings/
 backend/data/processed/
 __pycache__/
-*.pyc
+*.pyc.env
