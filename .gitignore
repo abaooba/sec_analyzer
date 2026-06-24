@@ -1,7 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
 .venv/
-backend/.env
+
+# Secrets — never commit real .env files.
+# (One was committed by mistake and pushed publicly; the leaked keys must be
+#  rotated provider-side. See LEARNINGS.md.)
+.env
+**/.env
+!.env.example
+
+# Local database
 backend/sec_analyzer.db
+*.db
+
+# Cached / downloaded data
 backend/data/raw_filings/
 backend/data/processed/
-__pycache__/
-*.pyc.env
