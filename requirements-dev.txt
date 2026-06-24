@@ -1,0 +1,5 @@
+# Development / CI tooling (not needed at runtime — see requirements.txt for those).
+# Install with:  .venv/bin/python -m pip install -r requirements-dev.txt
+pytest==9.1.1
+ruff==0.15.19
+mypy==2.1.0

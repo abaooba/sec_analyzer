@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+# Put the repo root on sys.path so tests can `import backend.app.*`
+# (the app uses package-relative imports under the `backend` package).
+pythonpath = ["."]
+testpaths = ["backend/tests"]
+addopts = "-q"
