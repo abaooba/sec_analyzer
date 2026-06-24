@@ -380,13 +380,27 @@ that hold the uncommitted cleanup-pass diff** — so the next iteration must FIR
 resolve that working tree (commit the cleanup pass, or have the user confirm) to
 avoid bundling WIP. Then T1 part 3 = GitHub Actions CI (pytest + ruff + mypy).
 
+### 2026-06-24 — T1 SAFETY NET (CI): GitHub Actions
+
+**What changed** — Added `.github/workflows/ci.yml` (purely additive): on every
+push / PR it sets up Python 3.13, installs `requirements.txt` +
+`requirements-dev.txt`, and runs `pytest`. Offline by design (SEC/Groq
+monkeypatched, DB in-memory) so CI needs no secrets. Validated the YAML parses
+and that the exact CI command (`pytest`) is green locally (53 passed).
+
+**Deliberately pytest-only for now** — ruff + mypy steps are omitted until
+`backend/app` actually passes them (1 ruff + 15 mypy issues outstanding); adding
+them now would make CI red. They join the workflow in the ruff/mypy bullet. CI
+activates on the user's next push (the leaked-key rotation should happen first).
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — code remediation ✅ (untrack `.env`, fix `.gitignore`, add
   `.env.example`; committed). Key rotation ⏳ **BLOCKED on user** (surfaced above).
-- **T1 SAFETY NET** — 🟦 in progress. Part 1 pytest suite ✅ (53 tests, committed).
-  Part 2 ruff+mypy config + type-hint backfill ⬜ next (1 ruff + 15 mypy baseline
-  measured). Part 3 GitHub Actions CI ⬜. ⚠️ part 2 must first resolve the
-  uncommitted 806-line cleanup-pass working tree.
+- **T1 SAFETY NET** — 🟦 in progress. pytest suite ✅ (53 tests, committed).
+  GitHub Actions CI ✅ (pytest-only, committed). ruff+mypy config + type-hint
+  backfill ⬜ **next** (1 ruff + 15 mypy baseline measured; then add both as CI
+  steps). ⚠️ that step must FIRST resolve the uncommitted 806-line cleanup-pass
+  working tree (it edits the same files) — needs a user decision.
 - **T2 ROBUSTNESS** — ⬜ (CORS scope, drop `verify=False`, logging, externalize
   scoring keywords/weights, LLM validation retry+fallback; also the `load_dotenv`
   path bug found above).
