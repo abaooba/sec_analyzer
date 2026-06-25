@@ -1021,6 +1021,16 @@ set-difference, `compare_section_lengths`) — pure and untested (only the traje
 was covered). After that the safe additive runway is genuinely done → consolidate
 (self-review + CHANGELOG) and land.
 
+### 2026-06-25 — Test-debt (7): change_detection YoY helpers — test-debt complete
+
+Covered the pure YoY helpers (`split_into_sentences`, `get_new_sentences`
+set-difference + cap, `compare_section_lengths` deltas) — `test_change_detection.py`
+(4), commit `5ec08ef`. 137 → 141. **Test-debt is now comprehensive**: all 5 scorers,
+the orchestrator blend + the 5 T4 features, the `/analyze` endpoint, every HTTP
+client, config/loader, and the YoY/trajectory logic are covered offline. The safe
+additive runway is exhausted → next is a consolidation unit (self-review the session
+diff + a CHANGELOG), then land with the closing artifact.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
