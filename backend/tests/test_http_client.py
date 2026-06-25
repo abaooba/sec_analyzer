@@ -1,12 +1,14 @@
-"""Tests for the shared httpx client factory.
+"""Tests for the shared httpx client factory and its consumers.
 
-These verify the outbound-HTTP security posture without making any network call:
-a recorder stands in for httpx.Client and captures the kwargs the factory passes.
+The factory tests verify the outbound-HTTP security posture without any network
+call (a recorder stands in for httpx.Client). The routing tests verify that the
+SEC/news clients actually build through the factory (a fake client stands in),
+so the tls_verify policy reaches every outbound call.
 """
 
 import pytest
 
-from backend.app import http_client
+from backend.app import company_lookup, http_client, sec_client
 
 
 class _ClientRecorder:
@@ -48,3 +50,57 @@ def test_settings_tls_verify_defaults_true():
     from backend.app.config import settings
 
     assert settings.tls_verify is True
+
+
+# --- Routing: the SEC/news clients must go through make_http_client ------------
+
+class _FakeResponse:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self._payload
+
+
+class _FakeClient:
+    """A context-manager httpx.Client stand-in that returns a fixed payload."""
+
+    def __init__(self, payload, **kwargs):
+        self._payload = payload
+        self.kwargs = kwargs
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def get(self, url, **kwargs):
+        return _FakeResponse(self._payload)
+
+
+def _factory_returning(payload, captured):
+    def factory(**kwargs):
+        captured.update(kwargs)
+        return _FakeClient(payload, **kwargs)
+
+    return factory
+
+
+def test_company_lookup_routes_through_factory(monkeypatch):
+    captured: dict = {}
+    payload = {"0": {"title": "Acme Inc", "ticker": "ACME", "cik_str": 123}}
+    monkeypatch.setattr(company_lookup, "make_http_client", _factory_returning(payload, captured))
+    assert company_lookup.load_company_tickers() == payload
+    assert "headers" in captured  # built via the factory, not httpx directly
+
+
+def test_sec_client_routes_through_factory(monkeypatch):
+    captured: dict = {}
+    payload = {"filings": "ok"}
+    monkeypatch.setattr(sec_client, "make_http_client", _factory_returning(payload, captured))
+    assert sec_client.SECClient().get_submissions("320193") == payload
+    assert "headers" in captured

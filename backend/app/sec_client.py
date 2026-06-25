@@ -16,9 +16,8 @@ SEC's fair-access limit instead of bursting and getting throttled/blocked.
 import threading
 import time
 
-import httpx
-
 from .config import settings
+from .http_client import make_http_client
 
 BASE_DATA_URL = "https://data.sec.gov"
 BASE_ARCHIVES_URL = "https://www.sec.gov/Archives/edgar/data"
@@ -69,7 +68,7 @@ class SECClient:
         url = f"{BASE_DATA_URL}/submissions/CIK{cik}.json"
 
         _throttle()  # respect the SEC rate limit before every call
-        with httpx.Client(headers=self.headers, timeout=settings.request_timeout) as client:
+        with make_http_client(headers=self.headers, timeout=settings.request_timeout) as client:
             response = client.get(url)
             response.raise_for_status()  # turn any 4xx/5xx into an exception
             return response.json()
@@ -80,7 +79,7 @@ class SECClient:
         url = f"{BASE_DATA_URL}/api/xbrl/companyfacts/CIK{cik}.json"
 
         _throttle()  # respect the SEC rate limit before every call
-        with httpx.Client(headers=self.headers, timeout=settings.request_timeout) as client:
+        with make_http_client(headers=self.headers, timeout=settings.request_timeout) as client:
             response = client.get(url)
             response.raise_for_status()
             return response.json()
@@ -99,7 +98,7 @@ class SECClient:
     def download_filing_html(self, filing_url: str) -> str:
         """Download the raw HTML of a single filing document."""
         _throttle()  # the ingest loop calls this repeatedly — throttle each one
-        with httpx.Client(headers=self.headers, timeout=settings.request_timeout) as client:
+        with make_http_client(headers=self.headers, timeout=settings.request_timeout) as client:
             response = client.get(filing_url)
             response.raise_for_status()
             return response.text

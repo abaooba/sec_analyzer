@@ -6,9 +6,8 @@ CIK. The SEC publishes a single JSON file mapping every ticker to its
 Python, with a clear precedence order so the best match wins.
 """
 
-import httpx
-
 from .config import settings
+from .http_client import make_http_client
 
 # Official SEC-published ticker -> CIK directory (one big JSON object).
 SEC_COMPANY_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
@@ -21,7 +20,7 @@ def load_company_tickers() -> dict:
         "Accept-Encoding": "gzip, deflate",
     }
 
-    with httpx.Client(headers=headers, timeout=30.0, follow_redirects=True) as client:
+    with make_http_client(headers=headers, timeout=30.0, follow_redirects=True) as client:
         response = client.get(SEC_COMPANY_TICKERS_URL)
         response.raise_for_status()
         return response.json()
