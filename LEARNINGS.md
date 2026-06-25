@@ -949,6 +949,15 @@ ticker-match name-overlap tie-break (commit `abe5910`). Test-only, no source cha
 building, then `geopolitics` fusion. (`metrics` is already covered by T1's
 `test_metrics.py`.)
 
+### 2026-06-25 — Test-debt (2): rss_ingest coverage
+
+`rss_ingest` (Google-News RSS URL building, entry normalization with the
+`published`→`updated` fallback, publisher-suffix title canonicalization, dedupe, and
+the boolean search-query builder) was untested. Added `test_rss_ingest.py` (5),
+mocking the feed (offline) — commit `b059f12`. Test-only. 105 → 110. Next: the
+`geopolitics` news×filing fusion (`classify_articles` + overlap scoring), the most
+complex untested module.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
