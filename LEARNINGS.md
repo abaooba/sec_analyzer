@@ -784,6 +784,32 @@ against any TOML-escaping corruption). 72 → 75; the 15 existing risk tests pas
 its data shape. Each adds a `[scorer]` section to keywords.toml + swaps its
 hardcoded dicts for `scorer_config(...)`.
 
+### 2026-06-25 — T2 ROBUSTNESS (part 9): externalize moat / business_model / geopolitics (2–4/4)
+
+Applied the risk pattern (part 8) to the other three scorers — each its own commit,
+each round-trip-faithful (generated from the live module + asserted
+`tomllib.loads == original`), each verified by the existing scoring tests + ruff/mypy:
+- **moat** (`1dd621d`) — like risk plus a `base_score`; the semiconductor-leaning
+  keywords (`euv`, `photolithography`, …) are now a data-file edit to generalize.
+- **business_model** (`7ff76e3`) — two-sided: `positive_weights` + `negative_weights`
+  sub-tables, plus its two caps + base score.
+- **geopolitics** (`27947a6`) — the fusion scorer: two keyword maps (`keywords` = news
+  events, `exposure_keywords` = filing language) + weights. `FULL_TEXT_ARTICLE_LIMIT`
+  stays in code (operational, not scoring data). Converted with a marker +
+  brace-matching script rather than transcribing ~200 lines of regex by hand.
+
+**T2 ROBUSTNESS is now COMPLETE.** All four keyword scorers source their lists +
+weights from `backend/app/scoring/keywords.toml` via `_keyword_config`; the scoring
+modules are logic-only. The generic `scorer_config(name)` loader handles all four
+shapes (single/two-sided weights, one/two keyword maps).
+
+**Verification** — `pytest` **75 passed**; `ruff check backend` + `mypy` clean; each
+module confirmed loading its categories from TOML.
+
+**Now / next** — T0, T1, T2 all ✅. Remaining is feature/cleanup work: T3 (async rate
+limiter), T4 signature features (confidence, trajectory, forensic flags, backtesting),
+T5 reach features. A natural point to check direction with the user.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
@@ -795,10 +821,10 @@ hardcoded dicts for `scorer_config(...)`.
   16-issue type-hint backfill (`7bb0e48`); ruff widened to the entry points with
   `main.py` cruft removed (`165974e`); mypy widened to the entry points
   (`ff5d570`). Static-analysis gate fully tied off.
-- **T2 ROBUSTNESS** — 🟦 nearly done. `.env` ✅, TLS ✅ uniform, LLM retry ✅, env
-  CORS ✅, structured logging ✅. Externalize scoring config 🟦 — `risk` done
-  (`1377822`: keywords.toml + `_keyword_config` loader, round-trip-faithful);
-  `moat` / `business_model` / `geopolitics` next. That's the last T2 work.
+- **T2 ROBUSTNESS** — ✅ **complete**. `.env` CWD-fix (`8a1ed46`), TLS → uniform
+  (`d970560`/`ba103a5`), LLM retry+fallback (`b95d3a5`), env CORS (`e68aa01`),
+  structured logging (`877af61`/`2de664d`), and all 4 scorers' keywords/weights
+  externalized to `keywords.toml` (`1377822`/`1dd621d`/`7ff76e3`/`27947a6`).
 - **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ✅ investigated
   → **no-op**: `beautifulsoup4`/`justext`/`courlan`/`dateparser` aren't unused —
   they're transitive deps of `trafilatura`/`htmldate`/`lxml` (pip reinstalls them
