@@ -760,6 +760,30 @@ confirms no `print()` remains in `backend/app`.
 **Structured logging is DONE.** The only remaining T2 item is externalize scoring
 keywords/weights (a larger refactor across the 4 scoring modules).
 
+### 2026-06-25 — T2 ROBUSTNESS (part 8): externalize scoring config — risk (1/4)
+
+**The fix (commit `1377822`)** — began externalizing the keyword scorers' tunable
+data. Moved risk's keyword regex lists, category weights, and caps out of `risk.py`
+into `backend/app/scoring/keywords.toml`, loaded once via a new `_keyword_config`
+module (stdlib `tomllib`; regex patterns live in TOML *literal* strings, so
+backslashes need no escaping — a JSON file would have needed ugly double-escaping).
+`risk.py` keeps its module-level names (`RISK_KEYWORDS` / `RISK_WEIGHTS` /
+`CATEGORY_CAP` / `TOTAL_CAP`), now assigned from the loaded table, so scoring logic,
+callers, and tests are untouched.
+
+**Fidelity guarantee** — the TOML was *generated programmatically* from the existing
+in-memory data with a round-trip assertion (`tomllib.loads(text) == original`), so
+the move is byte-for-byte faithful — no hand-transcription of the 60+ patterns.
+
+**Tests** — `test_scoring_config.py` (3): the loader returns the expected tables,
+keywords/weights align, and every externalized regex still `re.compile`s (guards
+against any TOML-escaping corruption). 72 → 75; the 15 existing risk tests pass.
+
+**Now / next** — same treatment for the other 3 scorers (each its own unit): `moat`,
+`business_model`, `geopolitics`. geopolitics differs (news×filing fusion), so check
+its data shape. Each adds a `[scorer]` section to keywords.toml + swaps its
+hardcoded dicts for `scorer_config(...)`.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
@@ -771,10 +795,10 @@ keywords/weights (a larger refactor across the 4 scoring modules).
   16-issue type-hint backfill (`7bb0e48`); ruff widened to the entry points with
   `main.py` cruft removed (`165974e`); mypy widened to the entry points
   (`ff5d570`). Static-analysis gate fully tied off.
-- **T2 ROBUSTNESS** — 🟦 nearly done. `.env` CWD-fix ✅ (`8a1ed46`), TLS ✅ uniform
-  (`d970560`/`ba103a5`), LLM retry+fallback ✅ (`b95d3a5`), env CORS ✅ (`e68aa01`),
-  structured logging ✅ (`877af61` + `2de664d` — `backend/app` print-free). Only
-  remaining: externalize scoring keywords/weights (larger refactor).
+- **T2 ROBUSTNESS** — 🟦 nearly done. `.env` ✅, TLS ✅ uniform, LLM retry ✅, env
+  CORS ✅, structured logging ✅. Externalize scoring config 🟦 — `risk` done
+  (`1377822`: keywords.toml + `_keyword_config` loader, round-trip-faithful);
+  `moat` / `business_model` / `geopolitics` next. That's the last T2 work.
 - **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ✅ investigated
   → **no-op**: `beautifulsoup4`/`justext`/`courlan`/`dateparser` aren't unused —
   they're transitive deps of `trafilatura`/`htmldate`/`lxml` (pip reinstalls them
