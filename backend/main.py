@@ -14,19 +14,15 @@ as a loose script: if there's no package context, it adds the repo root to the
 import path so `from backend.app...` resolves.
 """
 
-import json
 import sys
 from pathlib import Path
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from backend.app.db import init_db
-from backend.app.ingest import ingest_company, delete_local_filings_for_company
-from backend.app.fundamentals import ingest_company_facts
-from backend.app.opinion import build_full_opinion
-
 # #JSON OUTPUT  (legacy CIK/ticker-driven variant, kept for reference)
+# These imports are re-declared (live) in the ACTIVE section further down; the
+# block below is the commented reference variant they originally supported.
 # def main():
 #     cik = input("Enter company CIK: ").strip()
 #     company_name = input("Enter company name: ").strip()

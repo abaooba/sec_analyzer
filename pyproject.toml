@@ -6,9 +6,8 @@ testpaths = ["backend/tests"]
 addopts = "-q"
 
 [tool.ruff]
-# The lint gate runs against the core library (backend/app) in CI. The entry
-# points (main.py / api.py) still carry intentional "legacy kept for reference"
-# duplicate defs (F811), so they are linted separately as a later cleanup.
+# The lint gate runs against the whole backend tree (app + entry points + tests)
+# in CI. mypy stays scoped to backend/app — the entry points aren't fully typed.
 target-version = "py313"
 line-length = 100
 
