@@ -22,3 +22,28 @@ geopolitical = ['\bgeopolitical\b', '\btariffs\b', 'trade restrictions', 'trade 
 regulatory_legal = ['\bregulation\b', '\bregulatory\b', '\blitigation\b', '\blawsuit\b', '\bcompliance\b', '\bantitrust\b', '\bgovernment\b', 'legal proceedings', 'licensing restrictions', 'export license', 'data protection', 'environmental regulation', '\btax law\b']
 cybersecurity = ['\bcybersecurity\b', 'cyber attack', 'cyber attacks', 'data breach', '\bprivacy\b', 'security incident', 'unauthorized access', 'information security', '\bransomware\b', 'network intrusion']
 concentration = ['single source', '\bconcentration\b', 'depend significantly', 'majority of', 'customer concentration', 'supplier concentration', 'depend on', 'limited number of customers', '\bkey customer\b', '\btop customer\b', 'significant customer']
+
+[moat]
+category_cap = 15
+total_cap = 100
+base_score = 35
+
+[moat.weights]
+brand_strength = 1.4
+switching_costs = 1.5
+ecosystem_lock_in = 1.2
+scale_advantages = 1.4
+distribution_advantages = 1.1
+intellectual_property = 1.6
+customer_dependency_lock_in = 1.5
+technology_leadership = 1.6
+
+[moat.keywords]
+brand_strength = ['\bbrand\b', 'customer loyalty', '\breputation\b', '\btrusted\b', '\bpremium\b', 'market leader', 'technology leader', 'industry leader']
+switching_costs = ['\bintegrated\b', '\bcompatibility\b', '\binstalled base\b', '\bcontinuity\b', 'qualification', 'qualified', 'process integration', '\bworkflow\b', 'service agreement', 'field service', '\bupgrade\b', 'productivity upgrade', 'customer roadmap', 'process node', 'co-development']
+ecosystem_lock_in = ['\becosystem\b', '\bservices\b', '\bintegrated\b', 'supplier ecosystem', 'service network', 'global service network', 'customer support', 'application support', 'installed base management']
+scale_advantages = ['\bglobal\b', '\bscale\b', '\bworldwide\b', '\binternational\b', 'supply chain', 'large and complex', 'installed base', 'barriers to entry', 'high barriers to entry', 'capital intensive', 'engineering complexity', 'long development cycle', 'manufacturing precision', '\blead time\b']
+distribution_advantages = ['direct sales', '\bdistribution\b', '\bchannel\b', 'global sales', 'customer relationships', 'long-term customer', 'strategic customer', 'service organization']
+intellectual_property = ['intellectual property', '\bpatent\b', '\bpatents\b', '\bproprietary\b', '\btrademark\b', '\bcopyright\b', 'patent portfolio', 'trade secret', 'know-how', 'licensed technology', 'process technology', 'proprietary process', 'photolithography', '\beuv\b', 'extreme ultraviolet', 'high-na']
+customer_dependency_lock_in = ['sole supplier', 'single supplier', 'critical equipment', 'mission critical', '\byield\b', '\bthroughput\b', '\buptime\b', 'qualification cycle', '\bvalidated\b', 'replacement cycle']
+technology_leadership = ['technology leadership', 'technology leader', 'process roadmap', 'next-generation', 'advanced node', '\br&d\b', 'research and development', '\binnovation\b', 'roadmap', 'development program']

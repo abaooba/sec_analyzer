@@ -13,131 +13,19 @@ developed against.)
 
 import re
 
+from ._keyword_config import scorer_config
 
-# Moat-source categories -> keyword patterns. More categories firing = wider moat.
-MOAT_KEYWORDS = {
-    "brand_strength": [
-        r"\bbrand\b",
-        r"customer loyalty",
-        r"\breputation\b",
-        r"\btrusted\b",
-        r"\bpremium\b",
-        r"market leader",
-        r"technology leader",
-        r"industry leader",
-    ],
-    "switching_costs": [
-        r"\bintegrated\b",
-        r"\bcompatibility\b",
-        r"\binstalled base\b",
-        r"\bcontinuity\b",
-        r"qualification",
-        r"qualified",
-        r"process integration",
-        r"\bworkflow\b",
-        r"service agreement",
-        r"field service",
-        r"\bupgrade\b",
-        r"productivity upgrade",
-        r"customer roadmap",
-        r"process node",
-        r"co-development",
-    ],
-    "ecosystem_lock_in": [
-        r"\becosystem\b",
-        r"\bservices\b",
-        r"\bintegrated\b",
-        r"supplier ecosystem",
-        r"service network",
-        r"global service network",
-        r"customer support",
-        r"application support",
-        r"installed base management",
-    ],
-    "scale_advantages": [
-        r"\bglobal\b",
-        r"\bscale\b",
-        r"\bworldwide\b",
-        r"\binternational\b",
-        r"supply chain",
-        r"large and complex",
-        r"installed base",
-        r"barriers to entry",
-        r"high barriers to entry",
-        r"capital intensive",
-        r"engineering complexity",
-        r"long development cycle",
-        r"manufacturing precision",
-        r"\blead time\b",
-    ],
-    "distribution_advantages": [
-        r"direct sales",
-        r"\bdistribution\b",
-        r"\bchannel\b",
-        r"global sales",
-        r"customer relationships",
-        r"long-term customer",
-        r"strategic customer",
-        r"service organization",
-    ],
-    "intellectual_property": [
-        r"intellectual property",
-        r"\bpatent\b",
-        r"\bpatents\b",
-        r"\bproprietary\b",
-        r"\btrademark\b",
-        r"\bcopyright\b",
-        r"patent portfolio",
-        r"trade secret",
-        r"know-how",
-        r"licensed technology",
-        r"process technology",
-        r"proprietary process",
-        r"photolithography",
-        r"\beuv\b",
-        r"extreme ultraviolet",
-        r"high-na",
-    ],
-    "customer_dependency_lock_in": [
-        r"sole supplier",
-        r"single supplier",
-        r"critical equipment",
-        r"mission critical",
-        r"\byield\b",
-        r"\bthroughput\b",
-        r"\buptime\b",
-        r"qualification cycle",
-        r"\bvalidated\b",
-        r"replacement cycle",
-    ],
-    "technology_leadership": [
-        r"technology leadership",
-        r"technology leader",
-        r"process roadmap",
-        r"next-generation",
-        r"advanced node",
-        r"\br&d\b",
-        r"research and development",
-        r"\binnovation\b",
-        r"roadmap",
-        r"development program",
-    ],
-}
-
-MOAT_WEIGHTS = {
-    "brand_strength": 1.4,
-    "switching_costs": 1.5,
-    "ecosystem_lock_in": 1.2,
-    "scale_advantages": 1.4,
-    "distribution_advantages": 1.1,
-    "intellectual_property": 1.6,
-    "customer_dependency_lock_in": 1.5,
-    "technology_leadership": 1.6,
-}
-
-CATEGORY_CAP = 15
-TOTAL_CAP = 100
-BASE_SCORE = 35   # every company starts with a small assumed baseline moat
+# Keyword regex patterns, weights, caps, and the base score are loaded from
+# keywords.toml (via _keyword_config) so they can be tuned/generalized without
+# touching code. Module-level names are unchanged, so the rest of this file is
+# intact. (Many moat keywords lean toward semiconductor/equipment language —
+# generalizing them is now a data-file edit, not a code change.)
+_CFG = scorer_config("moat")
+MOAT_KEYWORDS: dict[str, list[str]] = _CFG["keywords"]
+MOAT_WEIGHTS: dict[str, float] = _CFG["weights"]
+CATEGORY_CAP: int = _CFG["category_cap"]
+TOTAL_CAP: int = _CFG["total_cap"]
+BASE_SCORE: int = _CFG["base_score"]
 
 
 def normalize_text(text: str) -> str:
