@@ -715,6 +715,35 @@ convert diagnostics to `info`/`warning`, add `logging.basicConfig` in the CLI
 (`main.py`) to keep progress visible; do it in 2 units (smaller modules first, then
 `ingest.py`). Then externalize scoring keywords/weights.
 
+### 2026-06-25 — T2 ROBUSTNESS (part 6): structured logging foundation
+
+**The problem** — library modules `print()`-ed progress/diagnostics straight to
+stdout: wrong for a library (the API server inherits the spew; callers can't
+control verbosity).
+
+**The fix (commit `877af61`)** — introduced the logging convention and converted
+the three smaller modules:
+- `llm_analysis` / `opinion` / `fundamentals`: a module-level
+  `logging.getLogger(__name__)`; progress → `logger.info`, the LLM degradation
+  notice → `logger.warning`, verbose per-tag/per-unit lines → `logger.debug`.
+- `main.py` (CLI): `logging.basicConfig(level=INFO, format="%(message)s")` at the
+  top of `main()` so progress stays visible and *reads like the old prints*; the
+  API path inherits uvicorn's logging config.
+- Net CLI effect: info progress looks unchanged; the verbose per-tag/unit lines
+  now sit at DEBUG (quieter by default, available with `DEBUG`).
+
+**Tests** — `test_llm_analysis.py` +1 `caplog` test (the exhausted-retry path logs
+a `WARNING`). 71 → 72. Smoke test confirmed `basicConfig` shows info plainly and
+hides debug.
+
+**Verification** — `pytest` **72 passed**; `ruff check backend` + `mypy` clean.
+
+**Now / next** — **`ingest.py` (28 prints)** is the one remaining print-heavy module
+→ its own conversion unit (same convention: progress/download/save → `info`,
+`except`-handler failures → `warning`/`error`, verbose → `debug`; no new
+basicConfig needed). After that, structured logging is done; then externalize
+scoring keywords/weights.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
@@ -726,11 +755,10 @@ convert diagnostics to `info`/`warning`, add `logging.basicConfig` in the CLI
   16-issue type-hint backfill (`7bb0e48`); ruff widened to the entry points with
   `main.py` cruft removed (`165974e`); mypy widened to the entry points
   (`ff5d570`). Static-analysis gate fully tied off.
-- **T2 ROBUSTNESS** — 🟦 in progress. `.env` CWD-fix ✅ (`8a1ed46`), TLS
-  verification ✅ (`d970560`) → uniform across all clients ✅ (`ba103a5`), LLM
-  retry+fallback ✅ (`b95d3a5`), env-configurable CORS ✅ (`e68aa01`). All T2
-  *security* items done. Remaining (larger): structured logging over `print`,
-  externalize scoring keywords/weights.
+- **T2 ROBUSTNESS** — 🟦 in progress. `.env` CWD-fix ✅ (`8a1ed46`), TLS ✅ uniform
+  (`d970560`/`ba103a5`), LLM retry+fallback ✅ (`b95d3a5`), env CORS ✅ (`e68aa01`).
+  Structured logging 🟦 — foundation + 3 modules done (`877af61`); `ingest.py` (28
+  prints) next. Remaining: `ingest.py` logging; externalize scoring keywords/weights.
 - **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ✅ investigated
   → **no-op**: `beautifulsoup4`/`justext`/`courlan`/`dateparser` aren't unused —
   they're transitive deps of `trafilatura`/`htmldate`/`lxml` (pip reinstalls them
