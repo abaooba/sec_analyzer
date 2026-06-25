@@ -8,6 +8,7 @@ in a `finally:` block so we don't leave large HTML files lying around between
 runs (the DB rows are kept, just the on-disk cache is cleared).
 """
 
+import logging
 from pathlib import Path
 
 from sqlalchemy import select
@@ -16,6 +17,8 @@ from .config import resolve_storage_path, settings
 from .db import SessionLocal
 from .models import Company, Filing
 from .sec_client import SECClient
+
+logger = logging.getLogger(__name__)
 
 
 # The filing types we care about. 10-K/10-Q/8-K are US domestic; 20-F/6-K/40-F
@@ -53,9 +56,9 @@ def ingest_company(cik: str):
     # Ensure the on-disk cache directory exists before we start writing files.
     Path(settings.raw_filings_dir).mkdir(parents=True, exist_ok=True)
 
-    print(f"Ingesting company: {submissions['name']} ({company_cik})")
-    print(f"Ticker: {ticker}")
-    print("Starting filing scan...")
+    logger.info("Ingesting company: %s (%s)", submissions["name"], company_cik)
+    logger.info("Ticker: %s", ticker)
+    logger.info("Starting filing scan...")
 
     # One session = one transaction for the whole ingest; committed at the end.
     with SessionLocal() as session:
@@ -69,11 +72,11 @@ def ingest_company(cik: str):
                 name=submissions["name"],
             )
             session.add(company)
-            print("Added new company to database.")
+            logger.info("Added new company to database.")
         else:
             existing_company.ticker = ticker
             existing_company.name = submissions["name"]
-            print("Company already exists in database. Metadata refreshed.")
+            logger.info("Company already exists in database. Metadata refreshed.")
 
         # Counters purely for the end-of-run summary printout.
         processed_count = 0
@@ -99,7 +102,7 @@ def ingest_company(cik: str):
             form_counts[form] += 1
             processed_count += 1
 
-            print(f"\nProcessing {form} | {filing_date} | {primary_doc}")
+            logger.info("Processing %s | %s | %s", form, filing_date, primary_doc)
             filing_url = client.build_filing_url(company_cik, accession_no, primary_doc)
 
             # Have we already recorded this exact filing (by accession number)?
@@ -111,7 +114,7 @@ def ingest_company(cik: str):
 
             if existing_filing is not None:
                 # --- Path A: filing row exists; backfill URL / re-download if needed ---
-                print("Filing already exists in database.")
+                logger.debug("Filing already exists in database.")
 
                 changed = False
                 resolved_existing_path = None
@@ -121,13 +124,13 @@ def ingest_company(cik: str):
                 if not existing_filing.filing_url:
                     existing_filing.filing_url = filing_url
                     changed = True
-                    print(f"Updated missing filing_url: {filing_url}")
+                    logger.debug("Updated missing filing_url: %s", filing_url)
 
                 # Re-download if we have no local copy or the cached file is gone
                 # (e.g. it was cleaned up after a previous run).
                 if not existing_filing.local_path or not resolved_existing_path or not resolved_existing_path.exists():
                     try:
-                        print(f"Downloading filing HTML from: {filing_url}")
+                        logger.info("Downloading filing HTML from: %s", filing_url)
                         html = client.download_filing_html(filing_url)
 
                         local_filename = f"{company_cik}_{accession_no}_{primary_doc}"
@@ -137,12 +140,12 @@ def ingest_company(cik: str):
                         existing_filing.local_path = str(local_path)
                         changed = True
                         downloaded_count += 1
-                        print(f"Saved local file to: {local_path}")
+                        logger.info("Saved local file to: %s", local_path)
                     except Exception as e:
                         failed_count += 1
-                        print(f"Failed to download existing filing: {e}")
+                        logger.warning("Failed to download existing filing: %s", e)
                 else:
-                    print(f"Local file already exists: {resolved_existing_path}")
+                    logger.debug("Local file already exists: %s", resolved_existing_path)
 
                 if changed:
                     updated_count += 1
@@ -153,7 +156,7 @@ def ingest_company(cik: str):
 
             # --- Path B: brand-new filing; download it and insert a fresh row ---
             try:
-                print(f"Downloading: {filing_url}")
+                logger.info("Downloading: %s", filing_url)
                 html = client.download_filing_html(filing_url)
 
                 # Cache filename encodes cik + accession + doc so it's unique.
@@ -173,21 +176,21 @@ def ingest_company(cik: str):
                 session.add(filing)
 
                 downloaded_count += 1
-                print(f"Saved to: {local_path}")
+                logger.info("Saved to: %s", local_path)
 
             except Exception as e:
                 # One bad filing shouldn't abort the whole ingest.
                 failed_count += 1
-                print(f"Failed to process filing {accession_no}: {e}")
+                logger.warning("Failed to process filing %s: %s", accession_no, e)
 
         session.commit()  # persist company + all filing rows atomically
 
-        print("\nIngestion complete.")
-        print(f"Target filings processed: {processed_count}")
-        print(f"New filings downloaded: {downloaded_count}")
-        print(f"Existing filings skipped: {skipped_count}")
-        print(f"Existing filings updated: {updated_count}")
-        print(f"Failed filings: {failed_count}")
+        logger.info("Ingestion complete.")
+        logger.info("Target filings processed: %d", processed_count)
+        logger.info("New filings downloaded: %d", downloaded_count)
+        logger.info("Existing filings skipped: %d", skipped_count)
+        logger.info("Existing filings updated: %d", updated_count)
+        logger.info("Failed filings: %d", failed_count)
 
 
 def delete_local_filings_for_company(cik: str):
@@ -220,20 +223,20 @@ def delete_local_filings_for_company(cik: str):
                 if path.exists() and path.is_file():
                     path.unlink()  # actually delete the file
                     deleted_count += 1
-                    print(f"Deleted local filing: {path}")
+                    logger.debug("Deleted local filing: %s", path)
                 else:
                     missing_count += 1
-                    print(f"File already missing: {path}")
+                    logger.debug("File already missing: %s", path)
 
                 filing.local_path = ""  # mark as no-longer-cached in the DB
 
             except Exception as e:
                 failed_count += 1
-                print(f"Could not delete {path}: {e}")
+                logger.warning("Could not delete %s: %s", path, e)
 
         session.commit()
 
-        print("\nLocal filing cleanup complete.")
-        print(f"Deleted files: {deleted_count}")
-        print(f"Already missing: {missing_count}")
-        print(f"Delete failures: {failed_count}")
+        logger.info("Local filing cleanup complete.")
+        logger.info("Deleted files: %d", deleted_count)
+        logger.info("Already missing: %d", missing_count)
+        logger.info("Delete failures: %d", failed_count)
