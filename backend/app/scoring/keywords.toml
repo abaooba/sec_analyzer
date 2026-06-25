@@ -101,3 +101,27 @@ china_exposure = ['\bchina\b', '\bchinese\b', '\btaiwan\b', '\basia\b', 'interna
 regulation_antitrust = ['\bregulation\b', '\bregulatory\b', '\bcompliance\b', '\bgovernment\b', '\bantitrust\b', 'export controls', 'competition authority', 'licensing restrictions']
 macro_demand = ['\binflation\b', 'interest rates', 'consumer confidence', '\bspending\b', 'economic conditions', '\brecession\b', '\bcyclical\b', '\bdemand\b', 'pricing pressure', 'foreign exchange']
 middle_east_energy_shipping = ['oil prices', 'energy prices', '\bshipping\b', '\blogistics\b', 'supply chain', 'international operations', 'regional economic conditions', '\binflation\b', 'currency fluctuations']
+
+[forensic]
+category_cap = 15
+total_cap = 100
+
+[forensic.weights]
+going_concern = 2.0
+restatement = 1.8
+material_weakness = 1.6
+impairment = 1.2
+related_party = 1.1
+liquidity_covenant = 1.5
+sec_investigation = 1.8
+auditor_change = 1.6
+
+[forensic.keywords]
+going_concern = ['going concern', 'substantial doubt', 'ability to continue as a going concern', 'doubt about.{0,25}ability to continue']
+restatement = ['\brestate\b', '\brestated\b', '\brestatement\b', 'prior period adjustment', 'previously issued financial statements']
+material_weakness = ['material weakness', 'significant deficiency', 'deficiency in.{0,20}internal control', 'internal control over financial reporting.{0,30}not effective']
+impairment = ['goodwill impairment', 'impairment charge', 'asset impairment', '\bwrite-down\b', '\bwrite-off\b', 'impairment of.{0,20}assets']
+related_party = ['related party', 'related-party', 'transactions with related', 'affiliated entit']
+liquidity_covenant = ['debt covenant', 'covenant breach', 'breach of.{0,15}covenant', 'insufficient liquidity', '\bcross-default\b', 'default under.{0,20}credit']
+sec_investigation = ['sec investigation', '\bsubpoena\b', 'formal investigation', 'wells notice', 'securities and exchange commission.{0,25}investigation']
+auditor_change = ['change of accountants', 'dismissed.{0,15}auditor', 'resigned as.{0,15}auditor', 'former auditor', 'change in.{0,15}independent registered']

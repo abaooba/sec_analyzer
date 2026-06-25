@@ -21,6 +21,7 @@ from .llm_analysis import generate_llm_analysis
 from .parse_filings import extract_latest_annual_sections, choose_section_text
 from .scoring.business_model import score_business_model_text
 from .scoring.financials import score_financial_quality
+from .scoring.forensic import score_forensic_text
 from .scoring.geopolitics import score_geopolitical_impact
 from .scoring.moat import score_moat_text
 from .scoring.risk import score_risk_text
@@ -340,6 +341,13 @@ def build_full_opinion(
         geopolitical_result,
     )
 
+    # Forensic red-flag scan over the filing text — surfaced as discrete flags,
+    # NOT folded into the weighted blend, so a real red flag is never averaged out.
+    forensic_text = "\n".join(
+        sections.get(key, "") for key in ("risk_factors", "mdna", "business")
+    )
+    forensic_result = score_forensic_text(forensic_text)
+
     # How much real data actually backs this opinion (filing text, financials,
     # YoY, news) — surfaced so a thin analysis isn't read as a strong one.
     confidence = compute_analysis_confidence(
@@ -354,6 +362,7 @@ def build_full_opinion(
         "ticker": ticker,
         "overall_score": overall_score,
         "confidence": confidence,
+        "forensic": forensic_result,
         "scores": {
             "financial": financial_result["total_financial_score"],
             "risk": risk_result["total_risk_score"],
