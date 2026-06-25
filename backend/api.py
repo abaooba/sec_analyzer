@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from backend.app.config import settings
 from backend.app.db import init_db
 from backend.app.company_lookup import find_company_match
 from backend.app.ingest import ingest_company, delete_local_filings_for_company
@@ -21,10 +22,11 @@ from backend.app.opinion import build_full_opinion
 app = FastAPI()
 
 # CORS middleware — lets a browser frontend on a different origin call this API.
-# allow_origins=["*"] permits any site; tighten to your real domain in prod.
+# Origins come from settings.cors_allow_origins (env CORS_ALLOW_ORIGINS); it
+# defaults to "*" (any site) for dev — set an allowlist to lock down in prod.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # You can tighten this later
+    allow_origins=settings.cors_allow_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -100,6 +100,11 @@ def resolve_database_url(database_url: str) -> str:
     return f"{sqlite_prefix}{resolved_path}"
 
 
+def _parse_csv_env(raw: str) -> list[str]:
+    """Split a comma-separated env value into a clean list, dropping blanks."""
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
 class Settings(BaseModel):
     """Typed bag of settings, each defaulting from an env var (or a fallback).
 
@@ -125,6 +130,12 @@ class Settings(BaseModel):
     # proxy. Parsed leniently — only an explicit false-y value disables it.
     tls_verify: bool = Field(
         default=os.getenv("TLS_VERIFY", "true").strip().lower() not in {"false", "0", "no", "off"}
+    )
+    # Browser origins allowed to call the API (CORS). Defaults to "*" (any origin)
+    # for easy local/dev use; set CORS_ALLOW_ORIGINS to a comma-separated allowlist
+    # (e.g. "https://app.example.com") to lock the API down in production.
+    cors_allow_origins: list[str] = Field(
+        default_factory=lambda: _parse_csv_env(os.getenv("CORS_ALLOW_ORIGINS", "*"))
     )
 
 
