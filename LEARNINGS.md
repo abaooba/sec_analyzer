@@ -999,6 +999,16 @@ rewrite, refactors, and T5 features that need external data sources). At that po
 the loop should consolidate/polish and narrow toward the 7:17 PM landing rather than
 manufacture marginal units.
 
+### 2026-06-25 — Test-debt (5): financial per-category scorers
+
+The financial scoring logic (25% of the blend) was untested — only `metrics`
+formatting was. Added `test_financials.py` (7) for the pure snapshot→score functions
+(clamp bounds; profitability / cash / leverage / balance-sheet / ROE threshold bands +
+missing-data fallbacks) — commit `ecee659`. 123 → 130. Next: the *distinct* parts of
+the `business_model` (two-sided positive−negative) and `moat` (base-score) scorers —
+the last untested scoring logic — after which all five dimensions' logic is covered
+and the safe additive runway is exhausted → consolidate + narrow toward the landing.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
