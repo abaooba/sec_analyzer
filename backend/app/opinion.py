@@ -253,6 +253,66 @@ def compute_analysis_confidence(
     return {"score": score, "level": level, "factors": factors}
 
 
+def detect_contradictions(opinion: dict) -> list[str]:
+    """Flag internal tensions in the assembled opinion an analyst shouldn't miss —
+    where two signals point opposite ways, or where a signal that sits OUTSIDE the
+    weighted blend (forensic flags) undercuts a strong headline score. Returns short
+    human-readable notes (empty if the picture is coherent).
+    """
+    scores = opinion.get("scores", {})
+    financial = scores.get("financial", 0)
+    risk = scores.get("risk", 0)
+    business_model = scores.get("business_model", 0)
+    moat = scores.get("moat", 0)
+    geopolitical = scores.get("geopolitical", 0)
+    overall = opinion.get("overall_score", 0)
+    flags = (opinion.get("forensic", {}) or {}).get("flags", []) or []
+    confidence_level = (opinion.get("confidence", {}) or {}).get("level")
+    trends = (opinion.get("score_trajectory", {}) or {}).get("trends", {}) or {}
+
+    notes: list[str] = []
+
+    if overall >= 70 and flags:
+        notes.append(
+            f"High overall score ({overall}) despite {len(flags)} forensic red flag(s) "
+            f"({', '.join(flags)}) — the flags are outside the blend; weigh them separately."
+        )
+
+    if moat >= 60 and flags:
+        notes.append(
+            f"Wide competitive moat ({moat}) alongside forensic red flags — a durable "
+            "business can still carry accounting/disclosure problems."
+        )
+
+    if financial >= 60 and confidence_level == "low":
+        notes.append(
+            f"Financial quality looks strong ({financial}) but analysis confidence is low "
+            "— the score rests on thin data."
+        )
+
+    if risk <= 20 and geopolitical >= 50:
+        notes.append(
+            f"Filing shows little risk language (risk {risk}) yet geopolitical exposure is "
+            f"high ({geopolitical}) — risk may be understated relative to real-world exposure."
+        )
+
+    if trends.get("business_model", {}).get("direction") == "up" and (
+        trends.get("risk", {}).get("direction") == "up"
+    ):
+        notes.append(
+            "Year-over-year, business-model language improved while risk language also rose "
+            "— a mixed trajectory, not a clean improvement."
+        )
+
+    if moat >= 60 and business_model <= 30:
+        notes.append(
+            f"Strong moat signals ({moat}) but weak business-model quality ({business_model}) "
+            "— an unusual split worth double-checking the inputs."
+        )
+
+    return notes
+
+
 def build_full_opinion(
     cik: str,
     company_name: str,
@@ -389,6 +449,10 @@ def build_full_opinion(
         },
         "llm_analysis": None,  # filled in below if the LLM is configured
     }
+
+    # Internal tensions worth surfacing (e.g. a strong headline score undercut by a
+    # forensic flag that sits outside the blend). Computed from the assembled opinion.
+    opinion["contradictions"] = detect_contradictions(opinion)
 
     # Final layer: ask the LLM to write a richer narrative from everything above.
     # Returns None (and we keep the rule-based opinion as-is) if no API key/error.
