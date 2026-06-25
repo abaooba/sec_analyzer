@@ -938,6 +938,17 @@ runway pivots to **test-debt + docs**: expand coverage for under-tested modules
 document the new T4 modules in the README / §5 file-map. Both safe + high-value
 unattended.
 
+### 2026-06-25 — Test-debt (1): company_lookup matching coverage
+
+`company_lookup.find_company_match` (ticker > exact-name > partial-name match
+precedence + CIK zero-padding) had no tests. Added `test_company_lookup.py` (6),
+mocking the SEC ticker directory so it's fully offline: `normalize_name`,
+ticker-match-wins, exact-name + zero-pad, partial-name, no-match→None, and a
+ticker-match name-overlap tie-break (commit `abe5910`). Test-only, no source change.
+99 → 105; `ruff`+`mypy` clean. Next test-debt target: `rss_ingest` dedup / query
+building, then `geopolitics` fusion. (`metrics` is already covered by T1's
+`test_metrics.py`.)
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
