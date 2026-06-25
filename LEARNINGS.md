@@ -881,6 +881,25 @@ Offline + bounded, so acceptable; consolidating would touch `detect_filing_chang
 So next safe additive unit: wire the new confidence/forensic/trajectory signals into
 the LLM prompt (so the narrative can cite them), or a contradiction unit.
 
+### 2026-06-25 — T4 SIGNATURE FEATURES (4): feed new signals into the LLM prompt
+
+**The feature (commit `3062ac0`)** — confidence / forensic / trajectory were in the
+opinion output but invisible to the AI narrative. Wired them into the `llm_analysis`
+user message (+ a system-prompt rule): ANALYSIS CONFIDENCE (weight conviction),
+FORENSIC RED FLAGS (fired flags + an evidence sentence each → surface in `red_flags`),
+SCORE TRAJECTORY (per-dimension direction → reference in thesis). Two pure helpers
+(`_build_forensic_block`, `_build_trajectory_block`) render them; empty inputs
+degrade to "None detected." / "Not enough filings". Additive — the message only
+grows, the JSON schema is unchanged.
+
+**Tests** — `test_llm_analysis.py` +4. 88 → 92; existing retry tests unaffected;
+`ruff` + `mypy` clean.
+
+**Next** — a **contradiction unit**: flag internal tensions (wide moat but forensic
+flags; improving business-model trajectory against rising risk language; high
+financial score but low confidence). Pure logic over the assembled opinion → clean +
+testable. Backtesting still STOP-and-surface (needs price data).
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
@@ -906,9 +925,8 @@ the LLM prompt (so the narrative can cite them), or a contradiction unit.
   judgment** — an invasive whole-codebase async rewrite of working code, too risky
   to run unattended; revisit attended.
 - **T4 SIGNATURE FEATURES** — 🟦 in progress (T0–T2 all ✅; additive features only
-  while unattended). Confidence ✅ (`2b9c33e`), forensic red-flags ✅ (`eef191a`),
-  score trajectory ✅ (`ed710e5`). Next: surface new signals to the LLM prompt / a
-  contradiction unit. Backtesting needs external price data → STOP-and-surface.
-  (T3 async rewrite deferred-by-judgment.)
+  while unattended). Confidence ✅ (`2b9c33e`), forensic ✅ (`eef191a`), trajectory ✅
+  (`ed710e5`), signals→LLM prompt ✅ (`3062ac0`). Next: contradiction unit; CLI report
+  surfacing. Backtesting → STOP-and-surface. (T3 async rewrite deferred-by-judgment.)
 - **T5 REACH FEATURES** — ⬜ (insider/institutional, peer-relative, contradiction
   detector, RAG Q&A, frontend, watchlist/alerts, PDF export).
