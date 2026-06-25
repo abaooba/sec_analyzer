@@ -16,7 +16,7 @@ and geopolitics are INVERTED (100 - score) because high values there are bad.
 
 import logging
 
-from .change_detection import detect_filing_changes
+from .change_detection import build_score_trajectory, detect_filing_changes
 from .llm_analysis import generate_llm_analysis
 from .parse_filings import extract_latest_annual_sections, choose_section_text
 from .scoring.business_model import score_business_model_text
@@ -341,6 +341,10 @@ def build_full_opinion(
         geopolitical_result,
     )
 
+    # Multi-year trajectory of the text-based scores (risk/business/moat) across the
+    # company's recent annual filings — shows how the disclosure profile is trending.
+    score_trajectory = build_score_trajectory(normalized_cik)
+
     # Forensic red-flag scan over the filing text — surfaced as discrete flags,
     # NOT folded into the weighted blend, so a real red flag is never averaged out.
     forensic_text = "\n".join(
@@ -363,6 +367,7 @@ def build_full_opinion(
         "overall_score": overall_score,
         "confidence": confidence,
         "forensic": forensic_result,
+        "score_trajectory": score_trajectory,
         "scores": {
             "financial": financial_result["total_financial_score"],
             "risk": risk_result["total_risk_score"],

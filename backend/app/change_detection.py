@@ -26,8 +26,8 @@ from .scoring.risk import score_risk_text
 ANNUAL_FORMS = ("10-K", "20-F", "40-F")
 
 
-def get_latest_two_annual_filings(cik: str):
-    """Return (newest, second-newest) annual filings, or (None, None) if <2 exist."""
+def get_latest_annual_filings(cik: str, limit: int = 4) -> list[Filing]:
+    """Return up to `limit` most-recent annual filings (newest first)."""
     normalized_cik = str(cik).zfill(10)
 
     with SessionLocal() as session:
@@ -35,12 +35,16 @@ def get_latest_two_annual_filings(cik: str):
             select(Filing)
             .where(Filing.cik == normalized_cik, Filing.form.in_(ANNUAL_FORMS))
             .order_by(Filing.filing_date.desc())
+            .limit(limit)
         )
-        filings = session.execute(stmt).scalars().all()
+        return list(session.execute(stmt).scalars().all())
 
+
+def get_latest_two_annual_filings(cik: str):
+    """Return (newest, second-newest) annual filings, or (None, None) if <2 exist."""
+    filings = get_latest_annual_filings(cik, limit=2)
     if len(filings) < 2:
         return None, None
-
     return filings[0], filings[1]
 
 
@@ -272,4 +276,59 @@ def detect_filing_changes(cik: str) -> dict:
             "risk_factors": new_risk_sentences,
             "mdna": new_mdna_sentences,
         },
+    }
+
+
+def _trajectory_trends(points: list[dict]) -> dict:
+    """Latest move per dimension (newest point minus the one before it)."""
+    if len(points) < 2:
+        return {}
+    latest, prior = points[-1], points[-2]
+    trends = {}
+    for dimension in ("risk", "business_model", "moat"):
+        delta = round(latest[dimension] - prior[dimension], 2)
+        direction = "up" if delta > 0 else "down" if delta < 0 else "flat"
+        trends[dimension] = {"change": delta, "direction": direction}
+    return trends
+
+
+def build_score_trajectory(cik: str, limit: int = 4) -> dict:
+    """Risk / business-model / moat text scores across the last `limit` annual
+    filings (oldest -> newest), so the disclosure profile's trend is visible.
+
+    Only the text-based scores get a trajectory: financials come from point-in-time
+    XBRL facts and geopolitics from live news, so neither has a per-filing history.
+    Filings whose cached HTML can't be loaded are skipped (best-effort).
+    """
+    filings = get_latest_annual_filings(cik, limit=limit)
+
+    points = []
+    for filing in reversed(filings):  # oldest -> newest
+        try:
+            sections = extract_sections_from_filing(filing)
+        except Exception:
+            continue  # cached HTML missing/unreadable -> skip this year
+
+        risk_text = choose_section_text(
+            sections, "risk_factors", "mdna", "business", "full_text", min_chars=500
+        )
+        business_text = choose_section_text(
+            sections, "business", "mdna", "risk_factors", "full_text", min_chars=500
+        )
+        points.append(
+            {
+                "filing_date": filing.filing_date,
+                "form": filing.form,
+                "risk": score_risk_text(risk_text)["total_risk_score"],
+                "business_model": score_business_model_text(business_text)[
+                    "total_business_model_score"
+                ],
+                "moat": score_moat_text(business_text)["total_moat_score"],
+            }
+        )
+
+    return {
+        "points": points,
+        "filings_compared": len(points),
+        "trends": _trajectory_trends(points),
     }

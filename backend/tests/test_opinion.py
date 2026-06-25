@@ -46,6 +46,10 @@ def _patch_pipeline(monkeypatch, *, financial, risk, business, moat, geo, change
     )
     monkeypatch.setattr(opinion_mod, "detect_filing_changes", lambda cik: change)
     monkeypatch.setattr(
+        opinion_mod, "build_score_trajectory",
+        lambda cik, **k: {"points": [], "filings_compared": 0, "trends": {}},
+    )
+    monkeypatch.setattr(
         opinion_mod, "score_geopolitical_impact",
         lambda **k: {"total_geopolitical_score": geo},
     )
