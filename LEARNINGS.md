@@ -684,16 +684,48 @@ runtime behavior); `mypy backend/app` clean; `pytest` **71 passed**.
 **T1 is now fully complete**: pytest (71) + ruff (whole `backend`) + mypy
 (`backend/app`) all gated in CI.
 
+### 2026-06-25 — T0 CLOSED: user rotated the leaked keys
+
+The user rotated the leaked Groq + News API keys provider-side — the one item the
+loop could not do autonomously (a real secret cannot be faked). This neutralizes
+the credentials reachable in public git history (committed in `1e2124b`/`f417aa6`,
+surfaced in the T0 entry above). **T0 is now fully closed.** A full history scrub
+(`git filter-repo` + force-push) remains optional and is left to the user
+(destructive; the loop won't force-push).
+
+### 2026-06-25 — T1: mypy gate extended to the entry points
+
+**What** — `mypy` covered only `backend/app`; `main.py` and `api.py` were
+type-unchecked. They already pass cleanly (verified), so widening is free:
+`[tool.mypy] files` now lists `backend/app` + `main.py` + `api.py`, and the CI step
+matches. Tests stay out (fixtures/monkeypatching aren't worth strict typing).
+
+**Fix (commit `ff5d570`)** — the static-analysis gate is now fully tied off: **ruff
+over the whole `backend` tree, mypy over the library + both entry points.**
+
+**Verification** — `mypy` clean on **25** source files (was 23, +`main.py`/`api.py`),
+via both the explicit CI command and bare `mypy` (config `files`); `ruff check
+backend` clean; `pytest` **71 passed**.
+
+**Now / next** — T1 is maximally done. Next backlog item: **structured `logging`
+over `print`** (~38 diagnostic prints: `ingest.py`(30) / `fundamentals.py`(6) /
+`opinion.py` / `llm_analysis.py`). A library writing progress to stdout is poor form
+(the API server inherits it). Plan: per-module `logging.getLogger(__name__)`,
+convert diagnostics to `info`/`warning`, add `logging.basicConfig` in the CLI
+(`main.py`) to keep progress visible; do it in 2 units (smaller modules first, then
+`ingest.py`). Then externalize scoring keywords/weights.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
-- **T0 SECURITY** — code remediation ✅ (untrack `.env`, fix `.gitignore`, add
-  `.env.example`; committed). `.env.example` re-tracked ✅ (`f9bb8f7`) after the
-  cleanup-pass commit `9b3234a` silently dropped it from tracking. Key rotation ⏳
-  **BLOCKED on user** (provider-side; cannot be done autonomously).
+- **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
+  `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
+  `9b3234a` silently dropped it. Key rotation ✅ **done by user (2026-06-25)** —
+  leaked Groq + News API keys rotated, neutralizing the public-history exposure.
+  (Optional, user-side: a `git filter-repo` history scrub.)
 - **T1 SAFETY NET** — ✅ **complete**. pytest (71 tests) + ruff (whole `backend`
-  tree) + mypy (`backend/app`) all gated in CI. ruff+mypy config + 16-issue
-  type-hint backfill (`7bb0e48`); gate later widened to the entry points with
-  `main.py` cruft removed, no ignores (`165974e`). Open (separate, larger): widen
-  mypy to the entry points (they aren't fully typed).
+  tree) + mypy (`backend/app` + entry points) all gated in CI. ruff+mypy config +
+  16-issue type-hint backfill (`7bb0e48`); ruff widened to the entry points with
+  `main.py` cruft removed (`165974e`); mypy widened to the entry points
+  (`ff5d570`). Static-analysis gate fully tied off.
 - **T2 ROBUSTNESS** — 🟦 in progress. `.env` CWD-fix ✅ (`8a1ed46`), TLS
   verification ✅ (`d970560`) → uniform across all clients ✅ (`ba103a5`), LLM
   retry+fallback ✅ (`b95d3a5`), env-configurable CORS ✅ (`e68aa01`). All T2
