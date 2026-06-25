@@ -986,6 +986,19 @@ response. Docs-only; gate unaffected (115 tests). Next: cover the `api.py` `/ana
 endpoint logic (company-not-found, success shape, the cleanup `finally`) with a
 TestClient + mocked pipeline — the API layer's control flow is still untested.
 
+### 2026-06-25 — Test-debt (4): /analyze endpoint control flow
+
+The `api.py` `/analyze` endpoint logic (company-not-found → `{"error"}`, success →
+opinion, the cleanup `finally`) was untested. Added `test_api_analyze.py` (3) with a
+FastAPI `TestClient` + fully mocked pipeline (offline): not-found error, success +
+ingest/facts/cleanup-called, and cleanup-runs-even-on-failure (500) — commit
+`4f03f5b`. Test-only. 115 → 118. Next: `article_extractor` (mock httpx/trafilatura),
+the last meaningful untested module — after which the **safe additive runway is
+essentially exhausted** (what remains is thin network/DB wrappers, the deferred async
+rewrite, refactors, and T5 features that need external data sources). At that point
+the loop should consolidate/polish and narrow toward the 7:17 PM landing rather than
+manufacture marginal units.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
