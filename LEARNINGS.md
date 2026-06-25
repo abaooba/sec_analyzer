@@ -603,6 +603,36 @@ LLM notice + the geopolitics/ingest prints), externalize scoring keywords/weight
 Optional: route `sec_client`/`company_lookup` through `make_http_client`. Adjacent:
 the 7 entry-point `F811`s. (T0 key rotation ⏳ user-side.)
 
+### 2026-06-25 — T2 ROBUSTNESS (part 4): env-configurable CORS
+
+**The gap** — `api.py` hardcoded `allow_origins=["*"]`, so any website could call
+the API and there was no way to restrict it short of editing code.
+
+**The fix (commit `e68aa01`)** — added a `cors_allow_origins` setting (env
+`CORS_ALLOW_ORIGINS`, comma-separated) parsed by a small `_parse_csv_env` helper;
+`api.py` now reads `settings.cors_allow_origins`. The default stays `"*"` → `["*"]`
+(behavior unchanged), but an operator can set an allowlist (e.g.
+`https://app.example.com`) to lock it down. Documented in `.env.example`. The
+permissive default is intentional — the *secure* value is a deploy-time judgment
+call (which origins?), so the unit adds the knob without guessing it (an actual
+default tightening would be a user decision).
+
+**Tests** — new `backend/tests/test_cors.py` (4): `_parse_csv_env` (wildcard,
+multi-value + whitespace trimming, blank-dropping) and a FastAPI `TestClient` CORS
+**preflight** asserting the default reflects any origin. The preflight is answered
+by the middleware itself, so the `/analyze` pipeline never runs — fully offline.
+
+**Verification** — `pytest` **69 passed** (65 + 4); `ruff` + `mypy backend/app`
+clean. (`api.py` is outside the `backend/app` gate, so it's covered by the test,
+not lint/type — a reason to widen the gate later.)
+
+**Now unblocked / next iteration** — entering the timebox wrap-up window. Small
+completable leftover: route `sec_client`/`company_lookup` through `make_http_client`
+so `TLS_VERIFY` governs *all* outbound calls uniformly (today only news/article
+do). Larger, deferred past the window: structured `logging` over `print`,
+externalize scoring keywords/weights, the 7 entry-point `F811`s. (T0 key rotation
+⏳ user-side.)
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — code remediation ✅ (untrack `.env`, fix `.gitignore`, add
   `.env.example`; committed). `.env.example` re-tracked ✅ (`f9bb8f7`) after the
@@ -613,10 +643,10 @@ the 7 entry-point `F811`s. (T0 key rotation ⏳ user-side.)
   scoped to `backend/app`, both wired into CI). Remaining nit: 7 intentional
   `F811`s in `main.py`/`api.py` (entry points) → fold into a T3 cleanup unit.
 - **T2 ROBUSTNESS** — 🟦 in progress. `load_dotenv` CWD-fix ✅ (`8a1ed46`), TLS
-  verification ✅ (`d970560`), LLM retry+fallback ✅ (`b95d3a5`: bounded retry then
-  graceful degrade, +4 tests). Remaining: env-configurable CORS (`api.py`),
-  structured logging over `print`, externalize scoring keywords/weights; optional
-  factory routing for `sec_client`/`company_lookup`.
+  verification ✅ (`d970560`), LLM retry+fallback ✅ (`b95d3a5`), env-configurable
+  CORS ✅ (`e68aa01`, +4 tests). Remaining: route `sec_client`/`company_lookup`
+  through `make_http_client` (uniform TLS), structured logging over `print`,
+  externalize scoring keywords/weights.
 - **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ✅ investigated
   → **no-op**: `beautifulsoup4`/`justext`/`courlan`/`dateparser` aren't unused —
   they're transitive deps of `trafilatura`/`htmldate`/`lxml` (pip reinstalls them
