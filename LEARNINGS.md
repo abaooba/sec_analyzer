@@ -810,6 +810,29 @@ module confirmed loading its categories from TOML.
 limiter), T4 signature features (confidence, trajectory, forensic flags, backtesting),
 T5 reach features. A natural point to check direction with the user.
 
+### 2026-06-25 — T4 SIGNATURE FEATURES (1): analysis confidence meta-score
+
+Resuming for the user's 3.5h absence (timebox now until ~7:17 PM). T0/T1/T2 are
+complete, so moving into T4 — **safe, additive** feature units only while
+unattended (the T3 async-rate-limiter is an invasive whole-codebase async rewrite
+of working code; deferred-by-judgment, not done unattended).
+
+**The feature (commit `2b9c33e`)** — `compute_analysis_confidence()` in `opinion.py`;
+`build_full_opinion` now returns a `confidence` block (`{score 0-100, level
+high/moderate/low, factors}`). It scores how much real data backs the five meters:
+filing sections found (Risk Factors 25 / Business 20 / MD&A 10), financial metrics
+loaded from XBRL (4 pts each, cap 20), a YoY comparison (15), and live news analyzed
+(10). Sparse data → low confidence, so a data-starved opinion isn't read as strong.
+Purely additive (new output field; scores/blend untouched), defensive against
+missing/None inputs.
+
+**Tests** — `test_confidence.py` (4): full→100/high, none→0/low,
+filing-text-only→55/moderate, None-metrics-don't-count + odd inputs safe. 75 → 79;
+`test_opinion` confirms `build_full_opinion` still passes end-to-end.
+
+**Next** — T4 continues: score **trajectory** (multi-year overall-score history),
+then forensic red-flag detection, then backtesting.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
@@ -830,10 +853,12 @@ T5 reach features. A natural point to check direction with the user.
   they're transitive deps of `trafilatura`/`htmldate`/`lxml` (pip reinstalls them
   regardless), and `requirements.txt` is pip-freeze-style, so pruning only loosens
   pins. Leave the freeze intact, or adopt a `requirements.in` (direct deps) +
-  pip-compile flow — a user call, not done autonomously. Open: async rate limiter
-  (now unblocked — `sec_client.py` WIP is committed) + the 7 entry-point `F811`s.
-- **T4 SIGNATURE FEATURES** — ⬜ T0–T1 prerequisite now ✅ (only T0 key-rotation,
-  user-side, still pending); features gated behind T2 (forensics scores,
-  confidence, trajectory, backtesting).
+  pip-compile flow — a user call, not done autonomously. Entry-point `F811`s ✅
+  resolved in the T1 capstone (`165974e`). Async rate limiter ⏸ **deferred-by-
+  judgment** — an invasive whole-codebase async rewrite of working code, too risky
+  to run unattended; revisit attended.
+- **T4 SIGNATURE FEATURES** — 🟦 in progress (T0–T2 all ✅; additive features only
+  while unattended). Confidence meta-score ✅ (`2b9c33e`). Next: score trajectory,
+  forensic red-flags, backtesting.
 - **T5 REACH FEATURES** — ⬜ (insider/institutional, peer-relative, contradiction
   detector, RAG Q&A, frontend, watchlist/alerts, PDF export).
