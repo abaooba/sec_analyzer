@@ -21,15 +21,36 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
-# Reads a `.env` file (if present) and injects its KEY=VALUE pairs into
-# os.environ. Called once at import time so every os.getenv() below sees them.
-load_dotenv()
-
 # `__file__` is .../backend/app/config.py, so parents[1] is the backend dir
 # and its parent is the repo root. Resolving these once lets us build absolute
 # paths that don't depend on where the process was started.
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_DIR.parent
+
+
+def _load_env_files(*candidate_paths: Path) -> list[Path]:
+    """Load each existing `.env` (in order) into os.environ without overriding
+    values already set in the real environment. Returns the paths actually loaded.
+
+    We load by *explicit absolute path* rather than a bare `load_dotenv()`: the
+    bare call searches upward from the current working directory, so a process
+    launched from outside the repo tree (a service, an installed entry point, a
+    different cwd) finds no `.env` — the Groq key silently stays unset and
+    `llm_analysis` quietly degrades to rule-only output. Explicit paths make
+    configuration loading independent of the launch directory.
+    """
+    loaded: list[Path] = []
+    for path in candidate_paths:
+        if path.is_file():
+            load_dotenv(path)  # override=False by default: real env wins
+            loaded.append(path)
+    return loaded
+
+
+# The repo-root `.env` is the documented location (see `.env.example`);
+# `backend/app/.env` is a legacy fallback for older setups. Loaded once at import
+# so every os.getenv() below sees the values regardless of the launch directory.
+_loaded_env_files = _load_env_files(REPO_ROOT / ".env", BACKEND_DIR / "app" / ".env")
 
 
 def resolve_storage_path(path_value: str) -> Path:
