@@ -744,6 +744,22 @@ hides debug.
 basicConfig needed). After that, structured logging is done; then externalize
 scoring keywords/weights.
 
+### 2026-06-25 — T2 ROBUSTNESS (part 7): ingest.py logging → migration complete
+
+**The fix (commit `2de664d`)** — converted `ingest.py`, the last print-heavy library
+module (28 prints), with the established convention: progress / downloads / saves /
+end-of-run summaries → `info`; per-filing status (already-exists, URL backfill,
+local-file-present, deleted, already-missing) → `debug`; `except`-handler failures
+(download / process / delete) → `warning`. **`backend/app` is now fully
+print-free.** The CLI (`main.py`) still owns user-facing report output via `print`,
+with `basicConfig(INFO)` keeping progress visible.
+
+**Verification** — `pytest` **72 passed**; `ruff check backend` + `mypy` clean; grep
+confirms no `print()` remains in `backend/app`.
+
+**Structured logging is DONE.** The only remaining T2 item is externalize scoring
+keywords/weights (a larger refactor across the 4 scoring modules).
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
@@ -755,10 +771,10 @@ scoring keywords/weights.
   16-issue type-hint backfill (`7bb0e48`); ruff widened to the entry points with
   `main.py` cruft removed (`165974e`); mypy widened to the entry points
   (`ff5d570`). Static-analysis gate fully tied off.
-- **T2 ROBUSTNESS** — 🟦 in progress. `.env` CWD-fix ✅ (`8a1ed46`), TLS ✅ uniform
-  (`d970560`/`ba103a5`), LLM retry+fallback ✅ (`b95d3a5`), env CORS ✅ (`e68aa01`).
-  Structured logging 🟦 — foundation + 3 modules done (`877af61`); `ingest.py` (28
-  prints) next. Remaining: `ingest.py` logging; externalize scoring keywords/weights.
+- **T2 ROBUSTNESS** — 🟦 nearly done. `.env` CWD-fix ✅ (`8a1ed46`), TLS ✅ uniform
+  (`d970560`/`ba103a5`), LLM retry+fallback ✅ (`b95d3a5`), env CORS ✅ (`e68aa01`),
+  structured logging ✅ (`877af61` + `2de664d` — `backend/app` print-free). Only
+  remaining: externalize scoring keywords/weights (larger refactor).
 - **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ✅ investigated
   → **no-op**: `beautifulsoup4`/`justext`/`courlan`/`dateparser` aren't unused —
   they're transitive deps of `trafilatura`/`htmldate`/`lxml` (pip reinstalls them
