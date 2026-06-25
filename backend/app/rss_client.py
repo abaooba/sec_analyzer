@@ -4,12 +4,14 @@ Used by rss_ingest to pull Google News results. We fetch the raw XML ourselves
 with httpx (rather than letting feedparser fetch) so we control headers and
 redirects, then hand the text to `feedparser.parse`.
 
-Note `verify=False` disables TLS certificate verification — convenient for a
-hobby project but something you'd remove in production.
+TLS certificate verification is on by default (clients are built via
+`make_http_client`); set `TLS_VERIFY=false` only behind a trusted intercepting
+proxy.
 """
 
-import httpx
 import feedparser
+
+from .http_client import make_http_client
 
 
 class RSSClient:
@@ -20,7 +22,7 @@ class RSSClient:
             "User-Agent": "Mozilla/5.0",
         }
 
-        with httpx.Client(timeout=30.0, follow_redirects=True, verify=False) as client:
+        with make_http_client(timeout=30.0, follow_redirects=True) as client:
             response = client.get(feed_url, headers=headers)
             response.raise_for_status()
             return feedparser.parse(response.text)

@@ -120,6 +120,12 @@ class Settings(BaseModel):
     max_requests_per_second: int = Field(default=int(os.getenv("MAX_REQUESTS_PER_SECOND", "5")))
     # API key for the Groq LLM (Llama 3.3 70B) used in llm_analysis.py.
     groq_api_key: str = Field(default=os.getenv("GROQ_API_KEY", ""))
+    # Verify TLS certificates on outbound HTTP (sec/news/article fetches). ON by
+    # default (secure); set TLS_VERIFY=false only behind a trusted TLS-intercepting
+    # proxy. Parsed leniently — only an explicit false-y value disables it.
+    tls_verify: bool = Field(
+        default=os.getenv("TLS_VERIFY", "true").strip().lower() not in {"false", "0", "no", "off"}
+    )
 
 
 # The single shared settings instance imported everywhere else in the app.

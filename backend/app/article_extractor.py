@@ -7,14 +7,15 @@ article text. Google News links are redirect URLs, so we resolve to the real
 destination first.
 """
 
-import httpx
 import trafilatura
+
+from .http_client import make_http_client
 
 
 def resolve_final_url(url: str) -> str:
     """Follow redirects to get the publisher's real URL (Google News wraps links)."""
     try:
-        with httpx.Client(timeout=30.0, follow_redirects=True, verify=False) as client:
+        with make_http_client(timeout=30.0, follow_redirects=True) as client:
             response = client.get(url, headers={"User-Agent": "Mozilla/5.0"})
             return str(response.url)
     except Exception:
