@@ -633,6 +633,35 @@ do). Larger, deferred past the window: structured `logging` over `print`,
 externalize scoring keywords/weights, the 7 entry-point `F811`s. (T0 key rotation
 ⏳ user-side.)
 
+### 2026-06-25 — T2 ROBUSTNESS (part 5): uniform TLS via the client factory
+
+**The loose end** — part 2 added `make_http_client` but only converted the two
+`verify=False` callers. `sec_client.py` (3 sites) and `company_lookup.py` still
+built `httpx.Client` directly, so `tls_verify` (and any `TLS_VERIFY=false` for a
+trusted proxy) governed only the news/article fetches, not the SEC calls.
+
+**The fix (commit `ba103a5`)** — routed both through `make_http_client`. `import
+httpx` now lives in exactly one module (`http_client.py`), so every outbound call
+shares one configurable TLS posture. Pure refactor — default behavior unchanged
+(verification stays on).
+
+**Tests** — `test_http_client.py` +2 routing tests: `company_lookup` and
+`sec_client` each construct via `make_http_client` (a fake context-manager client
+returns a fixed payload, so no network and no `_throttle` sleep on the first
+call). 69 → 71.
+
+**Verification** — `pytest` **71 passed**; `ruff` + `mypy backend/app` clean; grep
+confirms `import httpx` only in `http_client.py`. The TLS thread is now complete
+(factory + flag + all callers + docs + tests).
+
+**Now / next** — in the timebox wrap-up window. T2 *security* items are done (`.env`
+loading, TLS×2 → uniform, LLM retry, CORS). Remaining T2 is larger and deferred
+past the landing: structured `logging` over `print`, externalize scoring
+keywords/weights. A clean small candidate that ties off **T1**: widen the lint gate
+to `main.py`/`api.py` with a per-file-ignore for their *intentional* `F811` "legacy
+kept for reference" defs (non-destructive — the author kept that code on purpose).
+(T0 key rotation ⏳ user-side.)
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — code remediation ✅ (untrack `.env`, fix `.gitignore`, add
   `.env.example`; committed). `.env.example` re-tracked ✅ (`f9bb8f7`) after the
@@ -642,10 +671,10 @@ externalize scoring keywords/weights, the 7 entry-point `F811`s. (T0 key rotatio
   CI ✅. ruff + mypy config + type-hint backfill ✅ (`7bb0e48`: 16 issues → 0, gate
   scoped to `backend/app`, both wired into CI). Remaining nit: 7 intentional
   `F811`s in `main.py`/`api.py` (entry points) → fold into a T3 cleanup unit.
-- **T2 ROBUSTNESS** — 🟦 in progress. `load_dotenv` CWD-fix ✅ (`8a1ed46`), TLS
-  verification ✅ (`d970560`), LLM retry+fallback ✅ (`b95d3a5`), env-configurable
-  CORS ✅ (`e68aa01`, +4 tests). Remaining: route `sec_client`/`company_lookup`
-  through `make_http_client` (uniform TLS), structured logging over `print`,
+- **T2 ROBUSTNESS** — 🟦 in progress. `.env` CWD-fix ✅ (`8a1ed46`), TLS
+  verification ✅ (`d970560`) → uniform across all clients ✅ (`ba103a5`), LLM
+  retry+fallback ✅ (`b95d3a5`), env-configurable CORS ✅ (`e68aa01`). All T2
+  *security* items done. Remaining (larger): structured logging over `print`,
   externalize scoring keywords/weights.
 - **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ✅ investigated
   → **no-op**: `beautifulsoup4`/`justext`/`courlan`/`dateparser` aren't unused —
