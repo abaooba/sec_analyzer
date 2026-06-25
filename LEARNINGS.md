@@ -532,6 +532,47 @@ and `rss_client.py`), tighten CORS (`allow_origins=["*"]` in `api.py`), structur
 retry+fallback. Smaller adjacent cleanup: the 7 entry-point `F811`s. (T0 key
 rotation still ⏳ user-side.)
 
+### 2026-06-25 — T2 ROBUSTNESS (part 2): enable TLS verification
+
+**The hole** — two outbound HTTP clients passed `verify=False` to httpx, which
+*disables TLS certificate verification entirely*: `rss_client.py` (Google News
+RSS) and `article_extractor.py` (full-article fetch). A network attacker can
+present a forged certificate and MITM those fetches — the app would ingest
+poisoned news/article content with no warning. (`sec_client.py` and
+`company_lookup.py` were already fine — they omit `verify`, so httpx defaults to
+verification ON.)
+
+**The fix (commit `d970560`)**
+- New `backend/app/http_client.py` — a single `make_http_client(**kwargs)` factory
+  that applies `verify=settings.tls_verify` unless the caller passes an explicit
+  `verify`. One place now owns the outbound-HTTP security posture.
+- New config flag `tls_verify` (env `TLS_VERIFY`), default **True** (secure); only
+  an explicit false-y value (`false/0/no/off`) disables it — for someone behind a
+  trusted TLS-intercepting corporate proxy. Documented in `.env.example`.
+- `rss_client.py` + `article_extractor.py` build their clients via
+  `make_http_client(...)` with `verify=False` gone; the now-unused `import httpx`
+  was dropped from both, and `rss_client`'s "verify=False is fine for a hobby
+  project" docstring note was corrected.
+
+**Tests** — new `backend/tests/test_http_client.py` (4): the factory defaults to
+`verify=settings.tls_verify`, honors the flag when flipped, lets an explicit
+`verify=` kwarg win, and the *shipped* default is `True`. A `_ClientRecorder`
+(monkeypatched over `httpx.Client`) captures the kwargs without opening a socket
+— fully offline.
+
+**Verification** — `pytest` **61 passed** (57 + 4); `ruff check backend/app` clean;
+`mypy backend/app` clean (23 files now, with the new module); `grep verify=False`
+finds only a docstring + the override test — no live insecure clients.
+
+**Now unblocked / next iteration** — T2 continues. Remaining: tighten CORS
+(`allow_origins=["*"]` in `api.py` — the secure default is a judgment call, so make
+it env-configurable without changing the default, or surface to the user),
+structured `logging` over bare `print`, LLM-validation retry+fallback (self-
+contained in `llm_analysis.py`, cleanly mockable), externalize scoring
+keywords/weights. Optional consistency: route `sec_client`/`company_lookup`
+through `make_http_client` too. Adjacent: the 7 entry-point `F811`s. (T0 key
+rotation still ⏳ user-side.)
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — code remediation ✅ (untrack `.env`, fix `.gitignore`, add
   `.env.example`; committed). `.env.example` re-tracked ✅ (`f9bb8f7`) after the
@@ -541,11 +582,13 @@ rotation still ⏳ user-side.)
   CI ✅. ruff + mypy config + type-hint backfill ✅ (`7bb0e48`: 16 issues → 0, gate
   scoped to `backend/app`, both wired into CI). Remaining nit: 7 intentional
   `F811`s in `main.py`/`api.py` (entry points) → fold into a T3 cleanup unit.
-- **T2 ROBUSTNESS** — 🟦 in progress. `load_dotenv` CWD-dependence ✅ (`8a1ed46`:
-  load `.env` by explicit absolute path, + 4 tests). Remaining: drop `verify=False`
-  (TLS, `sec_client.py`/`rss_client.py`), tighten CORS (`allow_origins=["*"]` in
-  `api.py`), structured logging over `print`, externalize scoring keywords/weights,
-  LLM-validation retry+fallback.
+- **T2 ROBUSTNESS** — 🟦 in progress. `load_dotenv` CWD-dependence ✅ (`8a1ed46`).
+  TLS verification ✅ (`d970560`: `make_http_client` factory + `tls_verify` flag,
+  default secure; dropped `verify=False` from `rss_client`/`article_extractor`; +4
+  tests). Remaining: tighten CORS (`allow_origins=["*"]` in `api.py`), structured
+  logging over `print`, LLM-validation retry+fallback, externalize scoring
+  keywords/weights; optionally route `sec_client`/`company_lookup` through the
+  factory.
 - **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ✅ investigated
   → **no-op**: `beautifulsoup4`/`justext`/`courlan`/`dateparser` aren't unused —
   they're transitive deps of `trafilatura`/`htmldate`/`lxml` (pip reinstalls them
