@@ -5,6 +5,8 @@ No network or real Groq client is used: the Groq constructor is stubbed and
 controllable fake, so these exercise only the bounded-retry-then-degrade logic.
 """
 
+import logging
+
 import pytest
 
 from backend.app import llm_analysis
@@ -79,3 +81,15 @@ def test_degrades_to_none_after_exhausting_retries(monkeypatch):
     result = llm_analysis.generate_llm_analysis("Acme", None, {}, {})
     assert result is None
     assert calls["n"] == llm_analysis.LLM_MAX_ATTEMPTS  # tried exactly the cap
+
+
+def test_logs_warning_after_exhausting_retries(monkeypatch, caplog):
+    def always_fail(client, user_message):
+        raise RuntimeError("persistent failure")
+
+    monkeypatch.setattr(llm_analysis, "_request_analysis", always_fail)
+    with caplog.at_level(logging.WARNING):
+        result = llm_analysis.generate_llm_analysis("Acme", None, {}, {})
+
+    assert result is None
+    assert any("unavailable" in r.getMessage().lower() for r in caplog.records)

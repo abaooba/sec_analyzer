@@ -10,11 +10,15 @@ Each concept is listed under several possible tag names because different
 companies/standards label the same idea differently (e.g. Revenue vs Revenues).
 """
 
+import logging
+
 from sqlalchemy import select
 
 from .db import SessionLocal
 from .models import CompanyFact
 from .sec_client import SECClient
+
+logger = logging.getLogger(__name__)
 
 # Whitelist of XBRL tags to keep, grouped by taxonomy. Synonyms are included so
 # we can find, say, "revenue" whether the filer used us-gaap or ifrs-full.
@@ -64,7 +68,7 @@ def ingest_company_facts(cik: str):
     # Structure: facts["facts"][taxonomy][tag]["units"][unit] = [observations...]
     all_taxonomies = facts.get("facts", {})
 
-    print(f"Ingesting company facts for CIK: {company_cik}")
+    logger.info("Ingesting company facts for CIK: %s", company_cik)
 
     inserted_count = 0
     skipped_count = 0
@@ -78,12 +82,12 @@ def ingest_company_facts(cik: str):
                 if tag not in TARGET_TAGS[taxonomy]:
                     continue  # ignore non-whitelisted concepts
 
-                print(f"\nProcessing taxonomy/tag: {taxonomy}:{tag}")
+                logger.debug("Processing taxonomy/tag: %s:%s", taxonomy, tag)
 
                 # A tag can be reported in multiple units (e.g. USD and shares).
                 units = payload.get("units", {})
                 for unit, observations in units.items():
-                    print(f"  Unit: {unit} | Observations: {len(observations)}")
+                    logger.debug("Unit: %s | Observations: %d", unit, len(observations))
 
                     # Each observation is one reported value for one period.
                     for obs in observations:
@@ -140,6 +144,6 @@ def ingest_company_facts(cik: str):
 
         session.commit()
 
-    print("\nCompany facts ingestion complete.")
-    print(f"Inserted facts: {inserted_count}")
-    print(f"Skipped facts: {skipped_count}")
+    logger.info("Company facts ingestion complete.")
+    logger.info("Inserted facts: %d", inserted_count)
+    logger.info("Skipped facts: %d", skipped_count)

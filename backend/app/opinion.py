@@ -14,6 +14,8 @@ numbers into English bullet points. Note the scores are combined so that risk
 and geopolitics are INVERTED (100 - score) because high values there are bad.
 """
 
+import logging
+
 from .change_detection import detect_filing_changes
 from .llm_analysis import generate_llm_analysis
 from .parse_filings import extract_latest_annual_sections, choose_section_text
@@ -22,6 +24,8 @@ from .scoring.financials import score_financial_quality
 from .scoring.geopolitics import score_geopolitical_impact
 from .scoring.moat import score_moat_text
 from .scoring.risk import score_risk_text
+
+logger = logging.getLogger(__name__)
 
 
 def clamp_overall_score(score: float) -> float:
@@ -309,7 +313,7 @@ def build_full_opinion(
 
     # Final layer: ask the LLM to write a richer narrative from everything above.
     # Returns None (and we keep the rule-based opinion as-is) if no API key/error.
-    print("\nGenerating AI analysis...", flush=True)
+    logger.info("Generating AI analysis...")
     llm_result = generate_llm_analysis(company_name, ticker, opinion, sections)
     if llm_result:
         opinion["llm_analysis"] = llm_result.model_dump()  # pydantic -> dict

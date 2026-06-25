@@ -14,6 +14,7 @@ as a loose script: if there's no package context, it adds the repo root to the
 import path so `from backend.app...` resolves.
 """
 
+import logging
 import sys
 from pathlib import Path
 
@@ -95,6 +96,10 @@ def print_dict_section(title: str, data: dict):
 
 
 def main():
+    # Configure logging so the library's progress/diagnostic logs (info+) show on
+    # the console for CLI users, formatted plainly like the old prints.
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
     # 1. Ask the user for a company and resolve it to a CIK.
     company_input = input("Enter company name: ").strip()
 

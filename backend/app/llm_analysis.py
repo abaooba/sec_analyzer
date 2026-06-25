@@ -12,12 +12,15 @@ synthesize a portfolio-manager-grade write-up. Key techniques on display:
 """
 
 import json
+import logging
 import time
 
 from groq import Groq
 from pydantic import BaseModel
 
 from .config import settings
+
+logger = logging.getLogger(__name__)
 
 # Single source of truth for which model we call. LLM_DISPLAY_NAME is what the
 # CLI/report shows the user, so the label can never drift from the real model.
@@ -176,5 +179,5 @@ MD&A EXCERPT:
             if attempt < LLM_MAX_ATTEMPTS:
                 time.sleep(LLM_RETRY_BACKOFF_SECONDS * attempt)
 
-    print(f"\n[LLM] Analysis unavailable after {LLM_MAX_ATTEMPTS} attempts: {last_error}")
+    logger.warning("LLM analysis unavailable after %d attempts: %s", LLM_MAX_ATTEMPTS, last_error)
     return None
