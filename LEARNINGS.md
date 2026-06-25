@@ -573,6 +573,36 @@ keywords/weights. Optional consistency: route `sec_client`/`company_lookup`
 through `make_http_client` too. Adjacent: the 7 entry-point `F811`s. (T0 key
 rotation still ⏳ user-side.)
 
+### 2026-06-25 — T2 ROBUSTNESS (part 3): bounded LLM retry + graceful fallback
+
+**The gap** — `generate_llm_analysis` made *one* Groq call and, on any exception
+(transient network, 429 rate limit, or off-schema/empty JSON from the stochastic
+model), printed a notice and returned `None` — discarding the entire AI narrative
+on a single blip. No retry at all.
+
+**The fix (commit `b95d3a5`)** — extracted `_request_analysis(client, msg)` (one
+call+parse+validate round-trip that raises on failure) and wrapped it in a bounded
+retry inside `generate_llm_analysis`: up to `LLM_MAX_ATTEMPTS` (2) tries with a
+small linear backoff (`LLM_RETRY_BACKOFF_SECONDS`), then the same graceful degrade
+to `None`. Retrying is effective here precisely because the model is stochastic —
+a fresh attempt frequently returns valid JSON — and transient network / rate-limit
+errors clear on their own.
+
+**Tests** — new `backend/tests/test_llm_analysis.py` (4): no-key short-circuit
+(never calls), first-try success (1 call), retry-then-success (2 calls), and
+exhaust-then-`None` (exactly `LLM_MAX_ATTEMPTS` calls). `Groq` is stubbed and
+`_request_analysis` replaced with a controllable fake, with `time.sleep` patched
+out — no network, no real delay.
+
+**Verification** — `pytest` **65 passed** (61 + 4); `ruff` + `mypy backend/app` clean.
+
+**Now unblocked / next iteration** — T2 remaining: make CORS `allow_origins`
+env-configurable in `api.py` (keep the permissive default — the secure default is
+a deploy-time judgment call), structured `logging` over bare `print` (incl. this
+LLM notice + the geopolitics/ingest prints), externalize scoring keywords/weights.
+Optional: route `sec_client`/`company_lookup` through `make_http_client`. Adjacent:
+the 7 entry-point `F811`s. (T0 key rotation ⏳ user-side.)
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — code remediation ✅ (untrack `.env`, fix `.gitignore`, add
   `.env.example`; committed). `.env.example` re-tracked ✅ (`f9bb8f7`) after the
@@ -582,13 +612,11 @@ rotation still ⏳ user-side.)
   CI ✅. ruff + mypy config + type-hint backfill ✅ (`7bb0e48`: 16 issues → 0, gate
   scoped to `backend/app`, both wired into CI). Remaining nit: 7 intentional
   `F811`s in `main.py`/`api.py` (entry points) → fold into a T3 cleanup unit.
-- **T2 ROBUSTNESS** — 🟦 in progress. `load_dotenv` CWD-dependence ✅ (`8a1ed46`).
-  TLS verification ✅ (`d970560`: `make_http_client` factory + `tls_verify` flag,
-  default secure; dropped `verify=False` from `rss_client`/`article_extractor`; +4
-  tests). Remaining: tighten CORS (`allow_origins=["*"]` in `api.py`), structured
-  logging over `print`, LLM-validation retry+fallback, externalize scoring
-  keywords/weights; optionally route `sec_client`/`company_lookup` through the
-  factory.
+- **T2 ROBUSTNESS** — 🟦 in progress. `load_dotenv` CWD-fix ✅ (`8a1ed46`), TLS
+  verification ✅ (`d970560`), LLM retry+fallback ✅ (`b95d3a5`: bounded retry then
+  graceful degrade, +4 tests). Remaining: env-configurable CORS (`api.py`),
+  structured logging over `print`, externalize scoring keywords/weights; optional
+  factory routing for `sec_client`/`company_lookup`.
 - **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ✅ investigated
   → **no-op**: `beautifulsoup4`/`justext`/`courlan`/`dateparser` aren't unused —
   they're transitive deps of `trafilatura`/`htmldate`/`lxml` (pip reinstalls them
