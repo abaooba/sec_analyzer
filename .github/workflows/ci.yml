@@ -28,7 +28,7 @@ jobs:
         run: ruff check backend
 
       - name: Type-check (mypy)
-        run: mypy backend/app
+        run: mypy backend/app backend/main.py backend/api.py
 
       - name: Run tests
         run: pytest

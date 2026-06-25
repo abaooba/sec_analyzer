@@ -17,9 +17,10 @@ line-length = 100
 select = ["E4", "E7", "E9", "F"]
 
 [tool.mypy]
-# Type gate scoped to the core library. Default strictness (we do NOT require
-# full annotation coverage) plus ignoring missing third-party stubs
-# (feedparser / groq / trafilatura / httpx have none installed).
-files = ["backend/app"]
+# Type gate over the library AND the entry points. Default strictness (we do NOT
+# require full annotation coverage) plus ignoring missing third-party stubs
+# (feedparser / groq / trafilatura have none installed). Tests are excluded —
+# their fixtures/monkeypatching aren't worth strict typing.
+files = ["backend/app", "backend/main.py", "backend/api.py"]
 python_version = "3.13"
 ignore_missing_imports = true
