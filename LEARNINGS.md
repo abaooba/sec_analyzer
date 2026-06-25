@@ -1009,6 +1009,18 @@ the `business_model` (two-sided positive−negative) and `moat` (base-score) sco
 the last untested scoring logic — after which all five dimensions' logic is covered
 and the safe additive runway is exhausted → consolidate + narrow toward the landing.
 
+### 2026-06-25 — Test-debt (6): business_model + moat scoring
+
+Tested the last two scorers' distinct logic: `score_business_model_text` (two-sided:
+BASE 50 + positives − negatives) and `score_moat_text` (BASE 35 + capped category
+sum) — neutral→baseline, positive raises / negative lowers, moat keywords raise, both
+clamp [0,100]. `test_business_model_scoring.py` (4) + `test_moat_scoring.py` (3) —
+commit `87123e5`. 130 → 137. **All five scoring dimensions' logic is now covered.**
+Next genuine gap: `change_detection`'s YoY functions (`get_new_sentences`
+set-difference, `compare_section_lengths`) — pure and untested (only the trajectory
+was covered). After that the safe additive runway is genuinely done → consolidate
+(self-review + CHANGELOG) and land.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
