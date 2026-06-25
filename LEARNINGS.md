@@ -393,6 +393,34 @@ and that the exact CI command (`pytest`) is green locally (53 passed).
 them now would make CI red. They join the workflow in the ruff/mypy bullet. CI
 activates on the user's next push (the leaked-key rotation should happen first).
 
+### 2026-06-24 — User decision + T3: root README
+
+**Decision recorded** — Asked the user how to handle the uncommitted 806-line
+cleanup pass (it blocks ruff/mypy + all of T2, which edit those 22 files). They
+chose **"leave it; additive-only"**: do NOT touch the uncommitted files, ship only
+new-file units until they commit the cleanup pass themselves. So T1-ruff/mypy and
+all of T2 are **parked** pending the user committing that working tree.
+
+**What changed (T3)** — Added a root `README.md` (additive, new file). Quick-start
+focused (clone → venv → `pip install` → `cp .env.example .env` + `SEC_USER_AGENT`
+→ run CLI `python -m backend.main` or API `uvicorn backend.api:app --reload`),
+with a CI badge, the compact pipeline diagram, the exact blend formula (verified
+against `opinion.py`: weights `.25/.20/.20/.15/.20`), the five-dimension table,
+the test command, and the free-data-source list. `LEARNINGS.md` stays the deep
+reference. The repo previously had only an empty `backend/Readme.md`.
+
+**Verification** — Markdown fences balanced; blend weights cross-checked against
+source; entry-point commands confirmed (`main.py` has a `__main__`/`main()` that
+calls `init_db()`; `api.py` exposes `POST /analyze` with `{company_name, ticker?}`).
+
+**Now unblocked / next iteration** — While the cleanup pass stays uncommitted, the
+only remaining additive (no-WIP) candidate is T3's *prune-unused-deps* (edits only
+`requirements.txt`; needs grep verification — note `requirements.txt` looks
+pip-freeze-style, so confirm it's a direct-deps list before pruning). Everything
+higher-priority (T1 ruff/mypy, all T2) and all features (T4/T5) remain blocked —
+T4/T5 also gated on T1 being *fully* done. The cleanest path forward is for the
+user to **commit the cleanup pass**, which immediately unblocks T1-ruff/mypy → T2.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — code remediation ✅ (untrack `.env`, fix `.gitignore`, add
   `.env.example`; committed). Key rotation ⏳ **BLOCKED on user** (surfaced above).
@@ -404,7 +432,9 @@ activates on the user's next push (the leaked-key rotation should happen first).
 - **T2 ROBUSTNESS** — ⬜ (CORS scope, drop `verify=False`, logging, externalize
   scoring keywords/weights, LLM validation retry+fallback; also the `load_dotenv`
   path bug found above).
-- **T3 CLEANUP** — ⬜ (prune unused deps, async-safe rate limiter, root README).
+- **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ⬜ (only
+  remaining additive unit while WIP stays uncommitted). Async rate limiter ⬜
+  (blocked — edits `sec_client.py` WIP).
 - **T4 SIGNATURE FEATURES** — ⬜ blocked until T0–T1 done (forensics scores,
   confidence, trajectory, backtesting).
 - **T5 REACH FEATURES** — ⬜ (insider/institutional, peer-relative, contradiction
