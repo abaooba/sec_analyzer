@@ -974,6 +974,18 @@ network/DB wrappers. Next: **docs** — document the new T4 modules (forensic,
 http_client, _keyword_config) + the new opinion output blocks in the README / §5
 file-map.
 
+### 2026-06-25 — Docs: document the new T4 modules + signature-signal blocks
+
+The README and §5 file-map had drifted after the T2/T4 work. Updated both (commit
+`1f48623`), cross-checking each claim against the code: the file-map gained
+`http_client.py`, `scoring/forensic.py`, `scoring/_keyword_config.py`,
+`scoring/keywords.toml`, and notes for `change_detection`'s trajectory + `opinion`'s
+new blocks; the README gained a "signature signals" table (confidence / forensic /
+score_trajectory / contradictions) and those keys in the documented `/analyze`
+response. Docs-only; gate unaffected (115 tests). Next: cover the `api.py` `/analyze`
+endpoint logic (company-not-found, success shape, the cleanup `finally`) with a
+TestClient + mocked pipeline — the API layer's control flow is still untested.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
