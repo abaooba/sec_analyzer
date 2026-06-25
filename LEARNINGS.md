@@ -421,25 +421,97 @@ higher-priority (T1 ruff/mypy, all T2) and all features (T4/T5) remain blocked �
 T4/T5 also gated on T1 being *fully* done. The cleanest path forward is for the
 user to **commit the cleanup pass**, which immediately unblocks T1-ruff/mypy → T2.
 
+### 2026-06-25 — Cleanup pass committed → T0 `.env.example` re-track + T1 lint/type gate
+
+**Context unblock** — the user committed the 806-line "cleanup pass" as `9b3234a`
+("new changes"): the exact 22-file docstring/wiring diff from §7/§9 that every
+later tier was parked behind (T1-ruff/mypy and all of T2 edit those same files).
+With it committed the working tree is clean and those tiers are unblocked.
+Confirmed the lint/type **baseline is unchanged** by the cleanup pass (it added
+docstrings + wiring, not annotations): still **1 ruff + 15 mypy**.
+
+**T0 follow-up (commit `f9bb8f7`)** — `9b3234a` also *deleted* the tracked
+`.env.example` that T0 added (its diff showed `.env.example | 21 ------`); the file
+survived only as an untracked copy on disk. Re-added it so the repo keeps the
+secret-free template. Verified secret-free first — all 6 vars (`SEC_USER_AGENT`,
+`GROQ_API_KEY`, `DATABASE_URL`, `RAW_FILINGS_DIR`, `REQUEST_TIMEOUT`,
+`MAX_REQUESTS_PER_SECOND`) empty/placeholder; `.gitignore`'s `!.env.example`
+negation keeps it trackable.
+
+**T1 lint/type gate (commit `7bb0e48`)** — stood up the static-analysis gate on
+`backend/app`, driving all 16 baseline issues to zero:
+- **Config** (`pyproject.toml`): `[tool.ruff]` + `[tool.ruff.lint]` (default
+  `E4/E7/E9/F`, pinned for version-stability; `target py313`) and `[tool.mypy]`
+  (`files=["backend/app"]`, `ignore_missing_imports`, `py313`). Deliberately **not**
+  `--strict`: the gate catches real type errors without demanding full annotation
+  coverage (strict would surface hundreds of trivial ones and stall the loop).
+- **1 ruff fix**: removed the unused `pathlib.Path` import (`F401`).
+- **15 mypy fixes** — several real latent bugs, not just annotations:
+  - A `_SectionCandidate` **TypedDict** for the heterogeneous candidate dicts in
+    `parse_filings` — one type fixed *four* errors at once (the `var-annotated`,
+    the `object`-typed `word_count >=` comparison, and both
+    `Incompatible return value (object vs str)`).
+  - `var-annotated`: `category_sentences` (risk/moat/business_model),
+    `category_articles` (geopolitics), `changes` (opinion), `formatted` (metrics),
+    `seen_starts`.
+  - `parse_filings`: `filings.sort()` → `sorted()` — `.scalars().all()` returns an
+    immutable `Sequence[Filing]` (no `.sort()`); `sorted()` is also non-mutating,
+    strictly better.
+  - `metrics`: `filtered = list(rows)` (was assigning a `Sequence` to a `list` var).
+  - `rss_client`: `fetch_feed` now returns `feedparser.FeedParserDict` — it was
+    annotated `-> dict`, which made mypy reject the legitimate `.entries` access in
+    `rss_ingest`.
+  - **`llm_analysis` (real bug):** `response.choices[0].message.content` is
+    `str | None` but was passed straight to `json.loads`. Added an
+    `if not raw: raise ValueError(...)` guard — a `None`/empty completion would
+    previously have raised `TypeError`; it now degrades cleanly with a meaningful
+    message through the existing `except`.
+- **CI** (`ci.yml`): added `Lint (ruff check backend/app)` + `Type-check
+  (mypy backend/app)` steps before the test step; refreshed the header comment.
+  Still fully offline — no secrets.
+
+**Verification** — `ruff check backend/app` clean; `mypy` → "no issues found in 22
+source files"; `pytest` → **53 passed**; `ci.yml` parses (`yaml.safe_load`) and the
+exact CI commands were dry-run locally, all green.
+
+**Scope held deliberately** — gate scoped to `backend/app` (the core library).
+`main.py` / `api.py` still carry **7** intentional `F811` "legacy kept for
+reference" duplicate defs; removing/linting those is a distinct T3-cleanup unit,
+not part of the type gate.
+
+**Now unblocked / next iteration** — **T1 is complete** (pytest ✅, CI ✅, ruff+mypy
+gate ✅). Highest-priority open work moves to **T2 ROBUSTNESS**, whose `backend/app`
+edits are no longer blocked. Best first T2 unit: the **`load_dotenv` path bug**
+(config.py — a bare `load_dotenv()` searches CWD-upward and misses
+`backend/app/.env` when launched from the repo root, so the Groq key silently
+fails to load and the LLM degrades to rule-only). Then CORS scope, drop
+`verify=False`, structured logging, externalize scoring keywords/weights,
+LLM-validation retry+fallback. Adjacent small cleanup: the 7 entry-point `F811`s.
+T0 key rotation remains the only ⏳ user-blocked item.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — code remediation ✅ (untrack `.env`, fix `.gitignore`, add
-  `.env.example`; committed). Key rotation ⏳ **BLOCKED on user** (surfaced above).
-- **T1 SAFETY NET** — 🟦 in progress. pytest suite ✅ (53 tests, committed).
-  GitHub Actions CI ✅ (pytest-only, committed). ruff+mypy config + type-hint
-  backfill ⬜ **next** (1 ruff + 15 mypy baseline measured; then add both as CI
-  steps). ⚠️ that step must FIRST resolve the uncommitted 806-line cleanup-pass
-  working tree (it edits the same files) — needs a user decision.
-- **T2 ROBUSTNESS** — ⬜ (CORS scope, drop `verify=False`, logging, externalize
-  scoring keywords/weights, LLM validation retry+fallback; also the `load_dotenv`
-  path bug found above).
+  `.env.example`; committed). `.env.example` re-tracked ✅ (`f9bb8f7`) after the
+  cleanup-pass commit `9b3234a` silently dropped it from tracking. Key rotation ⏳
+  **BLOCKED on user** (provider-side; cannot be done autonomously).
+- **T1 SAFETY NET** — ✅ **complete**. pytest suite ✅ (53 tests). GitHub Actions
+  CI ✅. ruff + mypy config + type-hint backfill ✅ (`7bb0e48`: 16 issues → 0, gate
+  scoped to `backend/app`, both wired into CI). Remaining nit: 7 intentional
+  `F811`s in `main.py`/`api.py` (entry points) → fold into a T3 cleanup unit.
+- **T2 ROBUSTNESS** — ⬜ **now unblocked** (cleanup pass committed, so `backend/app`
+  edits no longer collide with WIP). Best first unit: the `load_dotenv` path bug
+  (config.py — bare `load_dotenv()` misses `backend/app/.env` from repo root → LLM
+  silently degrades to rule-only). Then CORS scope, drop `verify=False`, structured
+  logging, externalize scoring keywords/weights, LLM-validation retry+fallback.
 - **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ✅ investigated
   → **no-op**: `beautifulsoup4`/`justext`/`courlan`/`dateparser` aren't unused —
   they're transitive deps of `trafilatura`/`htmldate`/`lxml` (pip reinstalls them
   regardless), and `requirements.txt` is pip-freeze-style, so pruning only loosens
   pins. Leave the freeze intact, or adopt a `requirements.in` (direct deps) +
-  pip-compile flow — a user call, not done autonomously. Async rate limiter ⬜
-  (blocked — edits `sec_client.py` WIP).
-- **T4 SIGNATURE FEATURES** — ⬜ blocked until T0–T1 done (forensics scores,
+  pip-compile flow — a user call, not done autonomously. Open: async rate limiter
+  (now unblocked — `sec_client.py` WIP is committed) + the 7 entry-point `F811`s.
+- **T4 SIGNATURE FEATURES** — ⬜ T0–T1 prerequisite now ✅ (only T0 key-rotation,
+  user-side, still pending); features gated behind T2 (forensics scores,
   confidence, trajectory, backtesting).
 - **T5 REACH FEATURES** — ⬜ (insider/institutional, peer-relative, contradiction
   detector, RAG Q&A, frontend, watchlist/alerts, PDF export).
