@@ -194,6 +194,64 @@ def write_summary(
     return summary
 
 
+def compute_analysis_confidence(
+    sections: dict,
+    financial_result: dict,
+    change_result: dict,
+    geopolitical_result: dict,
+) -> dict:
+    """How much real data backs this opinion: a 0-100 score plus a coarse level.
+
+    The five scores are only as trustworthy as their inputs. A filing whose Risk
+    Factors / Business / MD&A sections were actually found, financial metrics that
+    loaded from XBRL, a year-over-year comparison, and live news each raise
+    confidence; sparse data lowers it. Surfacing this stops a thin, data-starved
+    analysis from being read as a strong one.
+    """
+    sections = sections or {}
+    factors: dict = {}
+    score = 0
+
+    # Filing text — every text scorer (risk/business/moat/geo-exposure) needs it.
+    factors["risk_factors_text"] = bool((sections.get("risk_factors") or "").strip())
+    factors["business_text"] = bool((sections.get("business") or "").strip())
+    factors["mdna_text"] = bool((sections.get("mdna") or "").strip())
+    if factors["risk_factors_text"]:
+        score += 25
+    if factors["business_text"]:
+        score += 20
+    if factors["mdna_text"]:
+        score += 10
+
+    # Financial metrics actually loaded from XBRL (non-empty snapshot fields).
+    metrics = (financial_result or {}).get("metrics_used") or {}
+    present_metrics = sum(1 for value in metrics.values() if value is not None)
+    factors["financial_metrics_present"] = present_metrics
+    score += min(present_metrics * 4, 20)  # capped at 20 (>= 5 metrics)
+
+    # Year-over-year comparison available (change detection didn't bail)?
+    has_yoy = bool(change_result) and not change_result.get("message")
+    factors["year_over_year_data"] = has_yoy
+    if has_yoy:
+        score += 15
+
+    # Live news pulled for the geopolitics signal?
+    article_count = (geopolitical_result or {}).get("article_count", 0)
+    factors["news_articles_analyzed"] = article_count
+    if article_count > 0:
+        score += 10
+
+    score = min(score, 100)
+    if score >= 75:
+        level = "high"
+    elif score >= 45:
+        level = "moderate"
+    else:
+        level = "low"
+
+    return {"score": score, "level": level, "factors": factors}
+
+
 def build_full_opinion(
     cik: str,
     company_name: str,
@@ -282,6 +340,12 @@ def build_full_opinion(
         geopolitical_result,
     )
 
+    # How much real data actually backs this opinion (filing text, financials,
+    # YoY, news) — surfaced so a thin analysis isn't read as a strong one.
+    confidence = compute_analysis_confidence(
+        sections, financial_result, change_result, geopolitical_result
+    )
+
     # Assemble the response: flat fields for display + a `details` block holding
     # each scorer's full output (used by the API consumer and the LLM step).
     opinion = {
@@ -289,6 +353,7 @@ def build_full_opinion(
         "company_name": company_name,
         "ticker": ticker,
         "overall_score": overall_score,
+        "confidence": confidence,
         "scores": {
             "financial": financial_result["total_financial_score"],
             "risk": risk_result["total_risk_score"],
