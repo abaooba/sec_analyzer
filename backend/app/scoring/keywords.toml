@@ -1,0 +1,24 @@
+# Externalized scoring config: keyword regex patterns, category weights, and
+# caps for the keyword-based scorers. Editing these tunes/generalizes scoring
+# without touching code. Patterns use TOML *literal* strings (single quotes) so
+# regex backslashes need no escaping. Loaded by scoring/_keyword_config.py.
+
+[risk]
+category_cap = 15
+total_cap = 100
+
+[risk.weights]
+macroeconomic = 1.0
+supply_chain = 1.2
+geopolitical = 1.4
+regulatory_legal = 1.1
+cybersecurity = 1.0
+concentration = 1.2
+
+[risk.keywords]
+macroeconomic = ['\binflation\b', 'interest rates', '\brecession\b', 'currency fluctuations', 'foreign exchange', 'exchange rates', 'economic conditions', 'consumer confidence', '\bspending\b', '\bmacroeconomic\b', 'cyclical demand', 'pricing pressure', 'adverse market conditions']
+supply_chain = ['supply chain', '\bsupplier\b', '\bsuppliers\b', '\bmanufacturing\b', '\bassembly\b', 'component shortages', '\blogistics\b', '\bdisruption\b', '\bshortages\b', 'lead times', 'capacity constraints', 'raw materials', 'production interruption', 'single source supplier']
+geopolitical = ['\bgeopolitical\b', '\btariffs\b', 'trade restrictions', 'trade tensions', '\bsanctions\b', 'export controls', '\bchina\b', '\bchinese\b', '\btaiwan\b', '\bwar\b', 'armed conflict', 'international operations', 'cross-border operations', 'regional economic conditions', 'national security', 'customs duties']
+regulatory_legal = ['\bregulation\b', '\bregulatory\b', '\blitigation\b', '\blawsuit\b', '\bcompliance\b', '\bantitrust\b', '\bgovernment\b', 'legal proceedings', 'licensing restrictions', 'export license', 'data protection', 'environmental regulation', '\btax law\b']
+cybersecurity = ['\bcybersecurity\b', 'cyber attack', 'cyber attacks', 'data breach', '\bprivacy\b', 'security incident', 'unauthorized access', 'information security', '\bransomware\b', 'network intrusion']
+concentration = ['single source', '\bconcentration\b', 'depend significantly', 'majority of', 'customer concentration', 'supplier concentration', 'depend on', 'limited number of customers', '\bkey customer\b', '\btop customer\b', 'significant customer']

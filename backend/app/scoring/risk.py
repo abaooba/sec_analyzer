@@ -17,114 +17,16 @@ the final opinion it's inverted: 100 - risk).
 
 import re
 
+from ._keyword_config import scorer_config
 
-# Each risk category maps to regex patterns. `\b` is a word boundary so
-# `\binflation\b` matches "inflation" but not "inflationary-something-else".
-RISK_KEYWORDS = {
-    "macroeconomic": [
-        r"\binflation\b",
-        r"interest rates",
-        r"\brecession\b",
-        r"currency fluctuations",
-        r"foreign exchange",
-        r"exchange rates",
-        r"economic conditions",
-        r"consumer confidence",
-        r"\bspending\b",
-        r"\bmacroeconomic\b",
-        r"cyclical demand",
-        r"pricing pressure",
-        r"adverse market conditions",
-    ],
-    "supply_chain": [
-        r"supply chain",
-        r"\bsupplier\b",
-        r"\bsuppliers\b",
-        r"\bmanufacturing\b",
-        r"\bassembly\b",
-        r"component shortages",
-        r"\blogistics\b",
-        r"\bdisruption\b",
-        r"\bshortages\b",
-        r"lead times",
-        r"capacity constraints",
-        r"raw materials",
-        r"production interruption",
-        r"single source supplier",
-    ],
-    "geopolitical": [
-        r"\bgeopolitical\b",
-        r"\btariffs\b",
-        r"trade restrictions",
-        r"trade tensions",
-        r"\bsanctions\b",
-        r"export controls",
-        r"\bchina\b",
-        r"\bchinese\b",
-        r"\btaiwan\b",
-        r"\bwar\b",
-        r"armed conflict",
-        r"international operations",
-        r"cross-border operations",
-        r"regional economic conditions",
-        r"national security",
-        r"customs duties",
-    ],
-    "regulatory_legal": [
-        r"\bregulation\b",
-        r"\bregulatory\b",
-        r"\blitigation\b",
-        r"\blawsuit\b",
-        r"\bcompliance\b",
-        r"\bantitrust\b",
-        r"\bgovernment\b",
-        r"legal proceedings",
-        r"licensing restrictions",
-        r"export license",
-        r"data protection",
-        r"environmental regulation",
-        r"\btax law\b",
-    ],
-    "cybersecurity": [
-        r"\bcybersecurity\b",
-        r"cyber attack",
-        r"cyber attacks",
-        r"data breach",
-        r"\bprivacy\b",
-        r"security incident",
-        r"unauthorized access",
-        r"information security",
-        r"\bransomware\b",
-        r"network intrusion",
-    ],
-    "concentration": [
-        r"single source",
-        r"\bconcentration\b",
-        r"depend significantly",
-        r"majority of",
-        r"customer concentration",
-        r"supplier concentration",
-        r"depend on",
-        r"limited number of customers",
-        r"\bkey customer\b",
-        r"\btop customer\b",
-        r"significant customer",
-    ],
-}
-
-# How much each category contributes — geopolitical/supply-chain risks are
-# weighted more heavily than generic macro risk.
-RISK_WEIGHTS = {
-    "macroeconomic": 1.0,
-    "supply_chain": 1.2,
-    "geopolitical": 1.4,
-    "regulatory_legal": 1.1,
-    "cybersecurity": 1.0,
-    "concentration": 1.2,
-}
-
-CATEGORY_CAP = 15   # max points any single category can add
-TOTAL_CAP = 100     # overall score ceiling
+# Keyword regex patterns, category weights, and caps are loaded from keywords.toml
+# (via _keyword_config) so they can be tuned/generalized without touching code.
+# The module-level names below are unchanged, so the rest of this file is intact.
+_CFG = scorer_config("risk")
+RISK_KEYWORDS: dict[str, list[str]] = _CFG["keywords"]
+RISK_WEIGHTS: dict[str, float] = _CFG["weights"]
+CATEGORY_CAP: int = _CFG["category_cap"]
+TOTAL_CAP: int = _CFG["total_cap"]
 
 
 def normalize_text(text: str) -> str:
