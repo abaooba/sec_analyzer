@@ -918,6 +918,26 @@ inputs.
 in the CLI report (`main.py`) so the terminal user sees them (extract a pure formatter
 for testability). Backtesting → STOP-and-surface (needs price data).
 
+### 2026-06-25 — T4 SIGNATURE FEATURES (6): surface signals in the CLI report
+
+**The feature (commit `ad543d1`)** — the confidence / forensic / trajectory /
+contradictions blocks were in the opinion output (and the API + LLM saw them) but the
+CLI terminal report didn't. Added a pure `format_signature_section(opinion) -> str`
+formatter + a "Signature Signals" section to `main.py`'s report. Pure formatter →
+unit-testable without capsys/pipeline.
+
+**Tests** — `test_cli_report.py` (2): all blocks rendered; empty opinion degrades
+(forensic line always "none detected", optional blocks omitted). 97 → 99; clean.
+
+**Now / next** — the **5 T4 signature features** (confidence, forensic, trajectory,
+contradictions — all wired into the LLM prompt + CLI report) are a coherent set.
+Remaining T4 backtesting needs external price/outcome data → **STOP-and-surface**, and
+T5 reach features mostly need new data sources / large scope. So the clean *additive*
+runway pivots to **test-debt + docs**: expand coverage for under-tested modules
+(`company_lookup` matching, `rss_ingest` dedup, `geopolitics` fusion, `metrics`) and
+document the new T4 modules in the README / §5 file-map. Both safe + high-value
+unattended.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
@@ -942,10 +962,11 @@ for testability). Backtesting → STOP-and-surface (needs price data).
   resolved in the T1 capstone (`165974e`). Async rate limiter ⏸ **deferred-by-
   judgment** — an invasive whole-codebase async rewrite of working code, too risky
   to run unattended; revisit attended.
-- **T4 SIGNATURE FEATURES** — 🟦 in progress (T0–T2 all ✅; additive features only
-  while unattended). Confidence ✅ (`2b9c33e`), forensic ✅ (`eef191a`), trajectory ✅
-  (`ed710e5`), signals→LLM ✅ (`3062ac0`), contradiction detector ✅ (`0efa4fc`). Next:
-  CLI-report surfacing of the new blocks (main.py). Backtesting → STOP-and-surface.
+- **T4 SIGNATURE FEATURES** — 🟦 mostly done (T0–T2 ✅; additive only while
+  unattended). Confidence ✅ (`2b9c33e`), forensic ✅ (`eef191a`), trajectory ✅
+  (`ed710e5`), signals→LLM ✅ (`3062ac0`), contradictions ✅ (`0efa4fc`), CLI surfacing
+  ✅ (`ad543d1`). Remaining: backtesting → STOP-and-surface (needs price data). Clean
+  additive runway now pivots to **test-debt + docs** (see latest log entry).
   (T3 async rewrite deferred-by-judgment.)
 - **T5 REACH FEATURES** — ⬜ (insider/institutional, peer-relative, contradiction
   detector, RAG Q&A, frontend, watchlist/alerts, PDF export).
