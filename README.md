@@ -53,6 +53,16 @@ overall = financial·0.25 + (100−risk)·0.20 + business_model·0.20
 | **Moat** | Competitive-advantage keywords (brand, switching costs, scale, ecosystem) |
 | **Geopolitics** | Live news events × the filing's stated exposure |
 
+**Beyond the blended score**, every opinion also carries four *signature signals*
+(additive — they don't change the 0–100 blend):
+
+| Signal | What it tells you |
+|---|---|
+| **Confidence** | How much real data backs the scores (filing sections found, XBRL metrics, YoY data, news) — high / moderate / low |
+| **Forensic flags** | Accounting/disclosure red flags (going-concern, restatement, material weakness, impairment, …) surfaced explicitly, with evidence |
+| **Score trajectory** | Risk / business-model / moat *text* scores across the last few annual filings — which way the disclosure profile is trending |
+| **Contradictions** | Internal tensions worth a second look (e.g. a strong headline score undercut by a forensic flag that sits outside the blend) |
+
 ---
 
 ## Quick start
@@ -93,7 +103,9 @@ curl -X POST localhost:8000/analyze \
 
 `ticker` is optional. The response is the full opinion JSON: `overall_score`,
 per-dimension `scores`, `strengths`, `weaknesses`, `summary`, the evidence-rich
-`details` block, and `llm_analysis` (or `null` when no `GROQ_API_KEY` is set).
+`details` block, `llm_analysis` (or `null` when no `GROQ_API_KEY` is set), and the
+four signature signals above (`confidence`, `forensic`, `score_trajectory`,
+`contradictions`).
 
 The database (SQLite) and the filing cache are created automatically on first run.
 

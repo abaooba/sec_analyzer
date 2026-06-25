@@ -196,6 +196,7 @@ Everything here is **free and public** — no paid data vendor.
 | `backend/app/db.py` | SQLAlchemy engine + `SessionLocal` + `init_db()` |
 | `backend/app/models.py` | ORM tables: `Company`, `Filing`, `CompanyFact` |
 | `backend/app/sec_client.py` | HTTP wrapper for the SEC EDGAR APIs + a process-wide rate-limit throttle |
+| `backend/app/http_client.py` | Shared `httpx` client factory — one place for the outbound TLS posture (`tls_verify` / `TLS_VERIFY`) |
 | `backend/app/company_lookup.py` | Name/ticker → CIK matching |
 | `backend/app/ingest.py` | Download filing HTML → cache + DB; cleanup |
 | `backend/app/fundamentals.py` | Download XBRL facts → `company_facts` (de-duped) |
@@ -206,11 +207,14 @@ Everything here is **free and public** — no paid data vendor.
 | `backend/app/scoring/business_model.py` | Two-sided (positive/negative) model-quality score |
 | `backend/app/scoring/moat.py` | Competitive-moat keyword score |
 | `backend/app/scoring/geopolitics.py` | News-event × filing-exposure fusion score (enriches top articles with full body text) |
+| `backend/app/scoring/forensic.py` | Forensic accounting/disclosure red-flag scorer (going-concern, restatement, material weakness, …) — surfaced as discrete flags, NOT in the blend |
+| `backend/app/scoring/_keyword_config.py` | Loads the externalized keyword/weight config (`keywords.toml`) for every keyword scorer |
+| `backend/app/scoring/keywords.toml` | Externalized keyword regex patterns + category weights + caps for risk / moat / business_model / geopolitics / forensic |
 | `backend/app/rss_client.py` | Fetch + parse an RSS feed |
 | `backend/app/rss_ingest.py` | Build Google News queries, normalize + dedupe articles |
 | `backend/app/article_extractor.py` | Full-article text extraction via trafilatura — used by the geopolitics scorer |
-| `backend/app/change_detection.py` | Year-over-year filing comparison |
-| `backend/app/opinion.py` | **Orchestrator** — runs everything, blends the final score |
+| `backend/app/change_detection.py` | Year-over-year filing comparison + multi-year score trajectory |
+| `backend/app/opinion.py` | **Orchestrator** — runs everything, blends the final score, and adds the confidence / forensic / trajectory / contradictions blocks |
 | `backend/app/llm_analysis.py` | LLM narrative layer (Groq / Llama 3.3 70B) |
 | `backend/api.py` | FastAPI `/analyze` endpoint |
 | `backend/main.py` | Interactive CLI with a formatted terminal report |
