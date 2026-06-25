@@ -900,6 +900,24 @@ flags; improving business-model trajectory against rising risk language; high
 financial score but low confidence). Pure logic over the assembled opinion → clean +
 testable. Backtesting still STOP-and-surface (needs price data).
 
+### 2026-06-25 — T4 SIGNATURE FEATURES (5): contradiction detector
+
+**The feature (commit `0efa4fc`)** — `detect_contradictions()` in `opinion.py`;
+`build_full_opinion` adds a `contradictions` block. Pure logic over the assembled
+opinion surfacing internal tensions: high overall score despite forensic flags (flags
+sit outside the blend); wide moat alongside forensic flags; strong financials but low
+confidence (thin data); little risk language but high geopolitical exposure (risk
+understated); business-model trajectory up while risk trajectory also up (mixed YoY);
+strong moat but weak business model (unusual split). Additive, defensive on partial
+inputs.
+
+**Tests** — `test_contradictions.py` (5): coherent → none, plus one per main rule.
+92 → 97; `ruff` + `mypy` clean.
+
+**Next** — surface the new T4 blocks (confidence, forensic, trajectory, contradictions)
+in the CLI report (`main.py`) so the terminal user sees them (extract a pure formatter
+for testability). Backtesting → STOP-and-surface (needs price data).
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
@@ -926,7 +944,8 @@ testable. Backtesting still STOP-and-surface (needs price data).
   to run unattended; revisit attended.
 - **T4 SIGNATURE FEATURES** — 🟦 in progress (T0–T2 all ✅; additive features only
   while unattended). Confidence ✅ (`2b9c33e`), forensic ✅ (`eef191a`), trajectory ✅
-  (`ed710e5`), signals→LLM prompt ✅ (`3062ac0`). Next: contradiction unit; CLI report
-  surfacing. Backtesting → STOP-and-surface. (T3 async rewrite deferred-by-judgment.)
+  (`ed710e5`), signals→LLM ✅ (`3062ac0`), contradiction detector ✅ (`0efa4fc`). Next:
+  CLI-report surfacing of the new blocks (main.py). Backtesting → STOP-and-surface.
+  (T3 async rewrite deferred-by-judgment.)
 - **T5 REACH FEATURES** — ⬜ (insider/institutional, peer-relative, contradiction
   detector, RAG Q&A, frontend, watchlist/alerts, PDF export).
