@@ -12,6 +12,7 @@ synthesize a portfolio-manager-grade write-up. Key techniques on display:
 """
 
 import json
+import time
 
 from groq import Groq
 from pydantic import BaseModel
@@ -22,6 +23,12 @@ from .config import settings
 # CLI/report shows the user, so the label can never drift from the real model.
 LLM_MODEL = "llama-3.3-70b-versatile"
 LLM_DISPLAY_NAME = "Groq · Llama 3.3 70B"
+
+# The LLM is stochastic and the network / rate limit can blip, so one failure
+# shouldn't lose the whole narrative. We try a bounded number of times, then
+# degrade gracefully to None (the rule-based summary still stands).
+LLM_MAX_ATTEMPTS = 2
+LLM_RETRY_BACKOFF_SECONDS = 0.5
 
 
 class LLMAnalysis(BaseModel):
@@ -77,6 +84,25 @@ def _build_evidence_block(evidence: dict) -> str:
             for s in sentences[:2]:
                 lines.append(f"  - {s}")
     return "\n".join(lines) or "No evidence sentences extracted."
+
+
+def _request_analysis(client: Groq, user_message: str) -> LLMAnalysis:
+    """One Groq round-trip: request JSON-mode output, parse it, and validate it
+    against the LLMAnalysis schema. Raises on any failure (network, rate limit,
+    malformed JSON, wrong shape) so the caller can decide whether to retry."""
+    response = client.chat.completions.create(
+        model=LLM_MODEL,
+        response_format={"type": "json_object"},  # JSON mode: forces valid JSON
+        messages=[
+            {"role": "system", "content": _SYSTEM_PROMPT},  # rules + schema
+            {"role": "user", "content": user_message},      # the actual data
+        ],
+        temperature=0.2,  # low = consistent, grounded, less "creative"
+    )
+    raw = response.choices[0].message.content
+    if not raw:
+        raise ValueError("LLM returned empty response content")
+    return LLMAnalysis(**json.loads(raw))
 
 
 def generate_llm_analysis(
@@ -137,25 +163,18 @@ BUSINESS DESCRIPTION EXCERPT:
 MD&A EXCERPT:
 {_truncate(sections.get("mdna", ""), 2000)}"""
 
-    try:
-        response = client.chat.completions.create(
-            model=LLM_MODEL,
-            response_format={"type": "json_object"},  # JSON mode: forces valid JSON
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},  # rules + schema
-                {"role": "user", "content": user_message},      # the actual data
-            ],
-            temperature=0.2,  # low = consistent, grounded, less "creative"
-        )
+    # Bounded retry around the call+parse+validate step: it can fail transiently
+    # (network / rate limit) or return off-schema JSON, and the model is
+    # stochastic, so a fresh attempt often succeeds. After the cap we degrade
+    # gracefully to None and the app falls back to the rule-based summary.
+    last_error: Exception | None = None
+    for attempt in range(1, LLM_MAX_ATTEMPTS + 1):
+        try:
+            return _request_analysis(client, user_message)
+        except Exception as e:  # bad JSON, schema mismatch, network, rate limit
+            last_error = e
+            if attempt < LLM_MAX_ATTEMPTS:
+                time.sleep(LLM_RETRY_BACKOFF_SECONDS * attempt)
 
-        # Parse the model's JSON string and validate it against our schema.
-        raw = response.choices[0].message.content
-        if not raw:
-            raise ValueError("LLM returned empty response content")
-        data = json.loads(raw)
-        return LLMAnalysis(**data)
-
-    except Exception as e:
-        # Any failure (bad JSON, network, rate limit) degrades gracefully to None.
-        print(f"\n[LLM] Analysis unavailable: {e}")
-        return None
+    print(f"\n[LLM] Analysis unavailable after {LLM_MAX_ATTEMPTS} attempts: {last_error}")
+    return None
