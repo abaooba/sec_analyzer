@@ -1,9 +1,23 @@
+"""Ingest XBRL financial 'facts' from the SEC into the company_facts table.
+
+The SEC's companyfacts API returns *every* tagged number a company has ever
+reported — thousands of them. We only want a curated handful of line items
+needed for our financial ratios, so TARGET_TAGS whitelists the relevant XBRL
+concept names under both accounting taxonomies:
+  - us-gaap   : US Generally Accepted Accounting Principles (domestic filers)
+  - ifrs-full : International Financial Reporting Standards (foreign filers)
+Each concept is listed under several possible tag names because different
+companies/standards label the same idea differently (e.g. Revenue vs Revenues).
+"""
+
 from sqlalchemy import select
 
 from .db import SessionLocal
 from .models import CompanyFact
 from .sec_client import SECClient
 
+# Whitelist of XBRL tags to keep, grouped by taxonomy. Synonyms are included so
+# we can find, say, "revenue" whether the filer used us-gaap or ifrs-full.
 TARGET_TAGS = {
     "us-gaap": {
         "Revenues",
@@ -42,10 +56,12 @@ TARGET_TAGS = {
 
 
 def ingest_company_facts(cik: str):
+    """Pull XBRL facts for a CIK and store the whitelisted ones, de-duplicated."""
     client = SECClient()
     facts = client.get_company_facts(cik)
 
     company_cik = str(facts["cik"]).zfill(10)
+    # Structure: facts["facts"][taxonomy][tag]["units"][unit] = [observations...]
     all_taxonomies = facts.get("facts", {})
 
     print(f"Ingesting company facts for CIK: {company_cik}")
@@ -56,18 +72,20 @@ def ingest_company_facts(cik: str):
     with SessionLocal() as session:
         for taxonomy, taxonomy_facts in all_taxonomies.items():
             if taxonomy not in TARGET_TAGS:
-                continue
+                continue  # ignore taxonomies we don't score on
 
             for tag, payload in taxonomy_facts.items():
                 if tag not in TARGET_TAGS[taxonomy]:
-                    continue
+                    continue  # ignore non-whitelisted concepts
 
                 print(f"\nProcessing taxonomy/tag: {taxonomy}:{tag}")
 
+                # A tag can be reported in multiple units (e.g. USD and shares).
                 units = payload.get("units", {})
                 for unit, observations in units.items():
                     print(f"  Unit: {unit} | Observations: {len(observations)}")
 
+                    # Each observation is one reported value for one period.
                     for obs in observations:
                         if "val" not in obs:
                             skipped_count += 1
@@ -79,6 +97,8 @@ def ingest_company_facts(cik: str):
                         filed = str(obs.get("filed", ""))
                         end_date = str(obs.get("end", ""))
 
+                        # De-dupe: the SEC repeats the same fact across filings,
+                        # so skip if this exact (cik, tag, period, ...) row exists.
                         stmt = select(CompanyFact).where(
                             CompanyFact.cik == company_cik,
                             CompanyFact.taxonomy == taxonomy,
@@ -96,6 +116,7 @@ def ingest_company_facts(cik: str):
                             skipped_count += 1
                             continue
 
+                        # Coerce the value to float; skip if it isn't numeric.
                         try:
                             value = float(obs["val"])
                         except (TypeError, ValueError):

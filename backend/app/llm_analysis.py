@@ -1,11 +1,31 @@
+"""The LLM layer — turns the structured scores into an analyst-style narrative.
+
+After all the deterministic scoring is done, we hand the numbers + real filing
+excerpts to an LLM (Llama 3.3 70B via Groq's fast inference API) and ask it to
+synthesize a portfolio-manager-grade write-up. Key techniques on display:
+  - A strict system prompt that demands a fixed JSON schema (the six keys).
+  - `response_format={"type": "json_object"}` (JSON mode) to force valid JSON.
+  - A pydantic model (`LLMAnalysis`) to validate the response shape.
+  - Low temperature (0.2) for consistent, grounded output.
+  - Graceful degradation: if no API key or the call fails, return None and the
+    app falls back to the rule-based summary only.
+"""
+
 import json
-import os
 
 from groq import Groq
 from pydantic import BaseModel
 
+from .config import settings
+
+# Single source of truth for which model we call. LLM_DISPLAY_NAME is what the
+# CLI/report shows the user, so the label can never drift from the real model.
+LLM_MODEL = "llama-3.3-70b-versatile"
+LLM_DISPLAY_NAME = "Groq · Llama 3.3 70B"
+
 
 class LLMAnalysis(BaseModel):
+    """Schema the LLM must fill. Doubles as validation of its JSON response."""
     enhanced_summary: str
     investment_thesis: str
     key_risks: list[str]
@@ -42,12 +62,14 @@ Rules:
 
 
 def _truncate(text: str, max_chars: int) -> str:
+    """Cap an excerpt's length so we stay within the model's context budget."""
     if not text or len(text) <= max_chars:
         return text or ""
     return text[:max_chars] + "..."
 
 
 def _build_evidence_block(evidence: dict) -> str:
+    """Format the risk evidence sentences (2 per category) for the prompt."""
     lines = []
     for category, sentences in evidence.items():
         if sentences:
@@ -65,14 +87,16 @@ def generate_llm_analysis(
 ) -> LLMAnalysis | None:
     """Call Groq (Llama 3.3 70B) to produce a richer narrative analysis.
 
-    Returns None if GROQ_API_KEY is not set or if the API call fails.
+    Returns None if no Groq API key is configured or if the API call fails.
     """
-    api_key = os.getenv("GROQ_API_KEY", "")
+    # No key -> skip the LLM entirely (the app still works on rule-based output).
+    api_key = settings.groq_api_key
     if not api_key:
         return None
 
     client = Groq(api_key=api_key)
 
+    # Pull the relevant pieces out of the opinion to build the user message.
     scores = opinion_data.get("scores", {})
     details = opinion_data.get("details", {})
     metrics = details.get("financial", {}).get("metrics_used", {})
@@ -115,19 +139,21 @@ MD&A EXCERPT:
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            response_format={"type": "json_object"},
+            model=LLM_MODEL,
+            response_format={"type": "json_object"},  # JSON mode: forces valid JSON
             messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": user_message},
+                {"role": "system", "content": _SYSTEM_PROMPT},  # rules + schema
+                {"role": "user", "content": user_message},      # the actual data
             ],
-            temperature=0.2,
+            temperature=0.2,  # low = consistent, grounded, less "creative"
         )
 
+        # Parse the model's JSON string and validate it against our schema.
         raw = response.choices[0].message.content
         data = json.loads(raw)
         return LLMAnalysis(**data)
 
     except Exception as e:
+        # Any failure (bad JSON, network, rate limit) degrades gracefully to None.
         print(f"\n[LLM] Analysis unavailable: {e}")
         return None

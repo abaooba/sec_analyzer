@@ -1,3 +1,19 @@
+"""CLI entry point — the interactive, human-readable version of the analyzer.
+
+Run with: `python -m backend.main` (or `python backend/main.py`).
+Prompts for a company name, runs the same pipeline as the API, and pretty-prints
+a formatted report to the terminal (scores, summary, strengths/weaknesses, the
+financial snapshot, and the AI analysis).
+
+The commented-out block below is an earlier variant that took CIK/ticker
+directly and dumped raw JSON — kept as a reference. The active `main()` further
+down is the name-driven, formatted version.
+
+The sys.path shim makes this runnable both as a module (`-m backend.main`) and
+as a loose script: if there's no package context, it adds the repo root to the
+import path so `from backend.app...` resolves.
+"""
+
 import json
 import sys
 from pathlib import Path
@@ -10,7 +26,7 @@ from backend.app.ingest import ingest_company, delete_local_filings_for_company
 from backend.app.fundamentals import ingest_company_facts
 from backend.app.opinion import build_full_opinion
 
-# #JSON OUTPUT
+# #JSON OUTPUT  (legacy CIK/ticker-driven variant, kept for reference)
 # def main():
 #     cik = input("Enter company CIK: ").strip()
 #     company_name = input("Enter company name: ").strip()
@@ -36,7 +52,7 @@ from backend.app.opinion import build_full_opinion
 #     main()
 
 
-#NORMAL OUTPUT FOR TESTING N SHI
+# --- ACTIVE: name-driven, formatted terminal report ---
 import sys
 from pathlib import Path
 
@@ -49,9 +65,12 @@ from backend.app.ingest import ingest_company, delete_local_filings_for_company
 from backend.app.fundamentals import ingest_company_facts
 from backend.app.metrics import format_snapshot
 from backend.app.opinion import build_full_opinion
+from backend.app.llm_analysis import LLM_DISPLAY_NAME
 
 
+# --- Small print helpers for consistent report formatting ---
 def print_section_title(title: str):
+    """Print a title with a dashed underline the same width."""
     print(f"\n{title}")
     print("-" * len(title))
 
@@ -61,6 +80,7 @@ def print_score(label: str, value):
 
 
 def print_list_section(title: str, items: list[str]):
+    """Print a titled bullet list, or 'None' if empty."""
     print_section_title(title)
     if not items:
         print("None")
@@ -71,6 +91,7 @@ def print_list_section(title: str, items: list[str]):
 
 
 def print_dict_section(title: str, data: dict):
+    """Print a dict as 'Title Cased Key: value' lines."""
     print_section_title(title)
     for key, value in data.items():
         label = key.replace("_", " ").title()
@@ -78,13 +99,14 @@ def print_dict_section(title: str, data: dict):
 
 
 def main():
+    # 1. Ask the user for a company and resolve it to a CIK.
     company_input = input("Enter company name: ").strip()
 
     if not company_input:
         print("No company name entered.")
         return
 
-    init_db()
+    init_db()  # make sure DB tables exist
 
     match = find_company_match(company_input)
 
@@ -102,11 +124,13 @@ def main():
     print(f"CIK: {normalized_cik}")
 
     try:
+        # 2. Ingest filings + financial facts, then 3. build the full opinion.
         ingest_company(normalized_cik)
         ingest_company_facts(normalized_cik)
 
         result = build_full_opinion(normalized_cik, company_name, ticker)
 
+        # Pull the raw metrics back out and format them for display.
         financial_metrics = result["details"]["financial"].get("metrics_used", {})
         formatted_financials = format_snapshot(financial_metrics)
 
@@ -135,10 +159,11 @@ def main():
 
         print_dict_section("Financial Snapshot", formatted_financials)
 
+        # The AI section only prints if the LLM step actually produced output.
         llm = result.get("llm_analysis")
         if llm:
             print("\n" + "=" * 60)
-            print("AI ANALYSIS (Claude Opus 4.7)")
+            print(f"AI ANALYSIS ({LLM_DISPLAY_NAME})")
             print("=" * 60)
 
             print_section_title("Investment Thesis")
@@ -158,6 +183,7 @@ def main():
             print(llm.get("score_commentary", ""))
 
     finally:
+        # Clean up cached HTML regardless of success/failure.
         delete_local_filings_for_company(normalized_cik)
 
 

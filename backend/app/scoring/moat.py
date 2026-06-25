@@ -1,6 +1,20 @@
+"""Economic-moat scoring — how defensible is the company's competitive position.
+
+"Moat" is Buffett-speak for durable competitive advantage. Same keyword engine
+as the other text scorers, starting from BASE_SCORE = 35 and adding points for
+each moat source detected: brand, switching costs, ecosystem lock-in, scale,
+distribution, IP/patents, customer lock-in, and technology leadership. IP and
+tech-leadership carry the heaviest weights (1.6). Higher = wider moat.
+
+(Many keywords here are tuned toward semiconductor/equipment language — e.g.
+"euv", "process node", "photolithography" — reflecting the filings this was
+developed against.)
+"""
+
 import re
 
 
+# Moat-source categories -> keyword patterns. More categories firing = wider moat.
 MOAT_KEYWORDS = {
     "brand_strength": [
         r"\bbrand\b",
@@ -123,7 +137,7 @@ MOAT_WEIGHTS = {
 
 CATEGORY_CAP = 15
 TOTAL_CAP = 100
-BASE_SCORE = 35
+BASE_SCORE = 35   # every company starts with a small assumed baseline moat
 
 
 def normalize_text(text: str) -> str:
@@ -202,12 +216,13 @@ def extract_moat_sentences(business_text: str, max_sentences_per_category: int =
 
 
 def score_moat_text(business_text: str) -> dict:
+    """Score = 35 baseline + sum of weighted, capped moat-category contributions."""
     keyword_results = count_moat_keywords(business_text)
     evidence_sentences = extract_moat_sentences(business_text)
 
     category_scores = {}
     matched_keywords = {}
-    total_score = BASE_SCORE
+    total_score = BASE_SCORE  # start at the baseline and accumulate upward
 
     for category, result in keyword_results.items():
         softened_hits = result["softened_total_hits"]

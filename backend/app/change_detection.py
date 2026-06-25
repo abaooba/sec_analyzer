@@ -1,3 +1,13 @@
+"""Year-over-year change detection between a company's two latest annual filings.
+
+Compares this year's 10-K/20-F against last year's to answer "what changed?":
+  - section length deltas (did Risk Factors grow a lot?)
+  - score deltas (did the risk/business/moat scores move?)
+  - brand-new sentences that appeared this year (set difference of sentences)
+These feed the "Recent Changes" section of the opinion. Needs >=2 annual
+filings on hand or it returns a polite "not enough filings" message.
+"""
+
 from sqlalchemy import select
 
 from .db import SessionLocal
@@ -17,6 +27,7 @@ ANNUAL_FORMS = ("10-K", "20-F", "40-F")
 
 
 def get_latest_two_annual_filings(cik: str):
+    """Return (newest, second-newest) annual filings, or (None, None) if <2 exist."""
     normalized_cik = str(cik).zfill(10)
 
     with SessionLocal() as session:
@@ -50,6 +61,7 @@ def extract_sections_from_filing(filing: Filing) -> dict:
 
 
 def split_into_sentences(text: str) -> list[str]:
+    """Same naive sentence splitter as the scorers (split after . ! ?)."""
     if not text:
         return []
 
@@ -61,8 +73,13 @@ def split_into_sentences(text: str) -> list[str]:
 
 
 def get_new_sentences(current_text: str, previous_text: str, max_sentences: int = 10) -> list[str]:
+    """Sentences present this year but NOT last year (a simple set difference).
+
+    Surfaces newly-added language — often the most analytically interesting part
+    of a filing (e.g. a brand-new risk the company just started disclosing).
+    """
     current_sentences = split_into_sentences(current_text)
-    previous_sentences = set(split_into_sentences(previous_text))
+    previous_sentences = set(split_into_sentences(previous_text))  # set for O(1) lookup
 
     new_sentences = []
     for sentence in current_sentences:
@@ -76,6 +93,7 @@ def get_new_sentences(current_text: str, previous_text: str, max_sentences: int 
 
 
 def compare_section_lengths(current_sections: dict, previous_sections: dict) -> dict:
+    """Character-count delta per section between the two filings."""
     results = {}
 
     for section_name in ["business", "risk_factors", "mdna"]:
@@ -96,6 +114,7 @@ def compare_section_lengths(current_sections: dict, previous_sections: dict) -> 
 
 
 def compare_scores(current_sections: dict, previous_sections: dict) -> dict:
+    """Re-run risk/business/moat scoring on both years and report the deltas."""
     current_risk_text = choose_section_text(
         current_sections,
         "risk_factors",
@@ -163,6 +182,7 @@ def compare_scores(current_sections: dict, previous_sections: dict) -> dict:
 
 
 def detect_filing_changes(cik: str) -> dict:
+    """Top-level: full YoY comparison (lengths, score deltas, new sentences)."""
     current_filing, previous_filing = get_latest_two_annual_filings(cik)
 
     if current_filing is None or previous_filing is None:

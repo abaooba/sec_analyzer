@@ -1,15 +1,31 @@
+"""Financial-quality scoring from the numeric snapshot (NOT keywords).
+
+Unlike the text scorers, this one grades the actual XBRL-derived numbers from
+metrics.compute_basic_snapshot. It scores five 0-20 categories that sum to a
+0-100 total:
+  - profitability         (operating margin, net income)
+  - cash_generation       (operating cash flow, free cash flow margin)
+  - leverage              (debt/equity, falling back to debt/assets)
+  - balance_sheet_strength(liabilities/assets, equity sign)
+  - capital_efficiency    (ROE proxy)
+Each scorer returns (score, notes) so the report can explain *why*. Missing data
+yields a low/zero score plus an "unavailable" note rather than an error.
+"""
+
 from ..metrics import compute_basic_snapshot
 
 
-CATEGORY_CAP = 20
+CATEGORY_CAP = 20   # each of the 5 categories maxes at 20 -> 100 total
 TOTAL_CAP = 100
 
 
 def clamp_score(value: float, low: float = 0, high: float = CATEGORY_CAP) -> float:
+    """Round and constrain a score into [low, high] (default 0..20)."""
     return max(low, min(round(value, 2), high))
 
 
 def score_profitability(snapshot: dict) -> tuple[float, list[str]]:
+    """Reward high operating margins; note net-income profitability."""
     notes = []
     score = 0
 
@@ -43,6 +59,7 @@ def score_profitability(snapshot: dict) -> tuple[float, list[str]]:
 
 
 def score_cash_generation(snapshot: dict) -> tuple[float, list[str]]:
+    """Reward positive operating cash flow, positive FCF, and a strong FCF margin."""
     notes = []
     score = 0
 
@@ -80,6 +97,11 @@ def score_cash_generation(snapshot: dict) -> tuple[float, list[str]]:
 
 
 def score_leverage(snapshot: dict) -> tuple[float, list[str]]:
+    """Reward low debt. Prefer debt/equity; fall back to debt/assets if no equity.
+
+    Note: no debt data is treated as a 0 here (conservative), while genuinely
+    low debt earns the full 20.
+    """
     notes = []
     score = 0
 
@@ -92,7 +114,7 @@ def score_leverage(snapshot: dict) -> tuple[float, list[str]]:
         return clamp_score(score), notes
 
     if equity not in (None, 0):
-        debt_to_equity = debt / equity
+        debt_to_equity = debt / equity  # primary leverage ratio
         if debt_to_equity < 0.5:
             score += 20
             notes.append("Low debt relative to equity.")
@@ -123,6 +145,7 @@ def score_leverage(snapshot: dict) -> tuple[float, list[str]]:
 
 
 def score_balance_sheet_strength(snapshot: dict) -> tuple[float, list[str]]:
+    """Reward a low liabilities/assets ratio and positive equity."""
     notes = []
     score = 0
 
@@ -134,7 +157,7 @@ def score_balance_sheet_strength(snapshot: dict) -> tuple[float, list[str]]:
         notes.append("Balance sheet data unavailable.")
         return clamp_score(score), notes
 
-    liability_ratio = liabilities / assets
+    liability_ratio = liabilities / assets  # lower is healthier
 
     if liability_ratio < 0.50:
         score += 20
@@ -158,6 +181,7 @@ def score_balance_sheet_strength(snapshot: dict) -> tuple[float, list[str]]:
 
 
 def score_capital_efficiency(snapshot: dict) -> tuple[float, list[str]]:
+    """Reward high return on equity (net income / equity)."""
     notes = []
     score = 0
 
@@ -186,6 +210,9 @@ def score_capital_efficiency(snapshot: dict) -> tuple[float, list[str]]:
 
 
 def score_financial_quality(cik: str) -> dict:
+    """Top-level financial scorer: build the snapshot, grade all 5 categories,
+    sum to a 0-100 total, and return the per-category scores, the raw metrics
+    used (handed to the report + LLM), and the explanatory notes."""
     snapshot = compute_basic_snapshot(cik)
 
     profitability_score, profitability_notes = score_profitability(snapshot)

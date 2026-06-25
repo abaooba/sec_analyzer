@@ -1,3 +1,19 @@
+"""The orchestrator — ties every scorer together into one final opinion.
+
+`build_full_opinion` is the brain of the app. It:
+  1. extracts the latest filing's sections,
+  2. runs all five scorers (financial, risk, business model, moat, geopolitics),
+  3. runs year-over-year change detection,
+  4. blends the five scores into a single weighted `overall_score`,
+  5. derives human-readable strengths / weaknesses / summary with rule-based
+     thresholds,
+  6. and finally layers an LLM narrative on top (llm_analysis).
+
+The helper functions above it are pure presentation logic: they translate raw
+numbers into English bullet points. Note the scores are combined so that risk
+and geopolitics are INVERTED (100 - score) because high values there are bad.
+"""
+
 from .change_detection import detect_filing_changes
 from .llm_analysis import generate_llm_analysis
 from .parse_filings import extract_latest_annual_sections, choose_section_text
@@ -9,10 +25,12 @@ from .scoring.risk import score_risk_text
 
 
 def clamp_overall_score(score: float) -> float:
+    """Round and constrain the blended score to [0, 100]."""
     return max(0, min(round(score, 2), 100))
 
 
 def build_strengths(financial_result: dict, business_result: dict, moat_result: dict) -> list[str]:
+    """Turn high category scores into up-to-5 plain-English strength bullets."""
     strengths = []
 
     if financial_result["total_financial_score"] >= 75:
@@ -39,6 +57,7 @@ def build_weaknesses(
     business_result: dict,
     geopolitical_result: dict | None = None,
 ) -> list[str]:
+    """Turn elevated-risk / weak-category signals into weakness bullets."""
     weaknesses = []
 
     if risk_result["total_risk_score"] >= 60:
@@ -63,8 +82,10 @@ def build_weaknesses(
 
 
 def build_recent_changes(change_result: dict) -> list[str]:
+    """Translate the YoY change-detection output into readable change bullets."""
     changes = []
 
+    # If change detection bailed (e.g. <2 annual filings), there's nothing to say.
     if not change_result or change_result.get("message"):
         return changes
 
@@ -106,6 +127,13 @@ def write_summary(
     recent_changes: list[str],
     geopolitical_result: dict | None = None,
 ) -> str:
+    """Compose a paragraph summary by mapping score bands to canned phrases.
+
+    Builds clauses like "financially strong" + "with a strong business model" +
+    "and strong moat characteristics", then appends risk, geopolitical, and the
+    single top strength/weakness/change. This is the deterministic summary; the
+    LLM later produces a richer 'enhanced_summary' alongside it.
+    """
     overall_financial = financial_result["total_financial_score"]
     overall_risk = risk_result["total_risk_score"]
     overall_business = business_result["total_business_model_score"]
@@ -168,9 +196,18 @@ def build_full_opinion(
     ticker: str | None = None,
     geo_terms: list[str] | None = None,
 ) -> dict:
+    """Run the whole analysis pipeline and return the complete opinion dict.
+
+    Assumes ingest_company + ingest_company_facts have already populated the DB
+    for this CIK. Returns a big nested dict: top-level scores + strengths/
+    weaknesses/summary for display, a `details` block with every scorer's full
+    output, and `llm_analysis` with the AI narrative (or None if unavailable).
+    """
     normalized_cik = str(cik).zfill(10)
 
+    # Pull the best filing's text once and reuse for the text-based scorers.
     sections = extract_latest_annual_sections(normalized_cik)
+    # Pick the best available text for risk scoring (risk_factors preferred).
     risk_text = choose_section_text(
         sections,
         "risk_factors",
@@ -188,11 +225,12 @@ def build_full_opinion(
         min_chars=500,
     )
 
+    # --- Run all five scorers (financials uses numbers, the rest use text) ---
     financial_result = score_financial_quality(normalized_cik)
     risk_result = score_risk_text(risk_text)
     business_result = score_business_model_text(business_text)
     moat_result = score_moat_text(business_text)
-    change_result = detect_filing_changes(normalized_cik)
+    change_result = detect_filing_changes(normalized_cik)  # YoY comparison
     geopolitical_result = score_geopolitical_impact(
         cik=normalized_cik,
         company_name=company_name,
@@ -213,6 +251,9 @@ def build_full_opinion(
         ],
     )
 
+    # Weighted blend into one 0-100 number. Risk and geopolitics are INVERTED
+    # (100 - score) so that "more risk" lowers the overall, not raises it.
+    # Weights sum to 1.0: financial .25, risk .20, business .20, moat .15, geo .20.
     overall_score = (
         financial_result["total_financial_score"] * 0.25
         + (100 - risk_result["total_risk_score"]) * 0.20
@@ -237,6 +278,8 @@ def build_full_opinion(
         geopolitical_result,
     )
 
+    # Assemble the response: flat fields for display + a `details` block holding
+    # each scorer's full output (used by the API consumer and the LLM step).
     opinion = {
         "company_cik": normalized_cik,
         "company_name": company_name,
@@ -261,12 +304,14 @@ def build_full_opinion(
             "geopolitical": geopolitical_result,
             "change_detection": change_result,
         },
-        "llm_analysis": None,
+        "llm_analysis": None,  # filled in below if the LLM is configured
     }
 
+    # Final layer: ask the LLM to write a richer narrative from everything above.
+    # Returns None (and we keep the rule-based opinion as-is) if no API key/error.
     print("\nGenerating AI analysis...", flush=True)
     llm_result = generate_llm_analysis(company_name, ticker, opinion, sections)
     if llm_result:
-        opinion["llm_analysis"] = llm_result.model_dump()
+        opinion["llm_analysis"] = llm_result.model_dump()  # pydantic -> dict
 
     return opinion

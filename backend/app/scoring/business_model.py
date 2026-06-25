@@ -1,6 +1,16 @@
+"""Business-model quality scoring from the Business/MD&A text.
+
+Same keyword machinery as risk.py, but with a twist: this score starts from a
+neutral BASE_SCORE (50) and moves UP for desirable traits (recurring revenue,
+diversification, scalability, ecosystem strength) and DOWN for undesirable ones
+(operational intensity, customer dependency). So it's a two-sided meter where
+50 = "average business model".
+"""
+
 import re
 
 
+# Categories split into "good" and "bad" traits (see POSITIVE/NEGATIVE_WEIGHTS).
 BUSINESS_MODEL_KEYWORDS = {
     "recurring_revenue": [
         r"\bsubscription\b",
@@ -102,6 +112,7 @@ BUSINESS_MODEL_KEYWORDS = {
     ],
 }
 
+# Traits that ADD to the score (durable, high-quality business characteristics).
 POSITIVE_WEIGHTS = {
     "recurring_revenue": 1.4,
     "diversification": 1.2,
@@ -109,15 +120,16 @@ POSITIVE_WEIGHTS = {
     "ecosystem_strength": 1.5,
 }
 
+# Traits that SUBTRACT from the score (fragility / lower-quality characteristics).
 NEGATIVE_WEIGHTS = {
     "operational_intensity": 1.0,
     "customer_dependency": 1.2,
 }
 
-POSITIVE_CAP = 15
-NEGATIVE_CAP = 12
+POSITIVE_CAP = 15   # per positive category cap
+NEGATIVE_CAP = 12   # per negative category cap
 TOTAL_CAP = 100
-BASE_SCORE = 50
+BASE_SCORE = 50     # neutral starting point: final = 50 + positives - negatives
 
 
 def normalize_text(text: str) -> str:
@@ -196,6 +208,7 @@ def extract_business_sentences(business_text: str, max_sentences_per_category: i
 
 
 def score_business_model_text(business_text: str) -> dict:
+    """Score = 50 + (capped positive contributions) - (capped negatives)."""
     keyword_results = count_business_keywords(business_text)
     evidence_sentences = extract_business_sentences(business_text)
 
@@ -204,6 +217,7 @@ def score_business_model_text(business_text: str) -> dict:
     total_positive = 0
     total_negative = 0
 
+    # Route each category to the positive or negative tally based on its type.
     for category, result in keyword_results.items():
         softened_hits = result["softened_total_hits"]
         matched_keywords[category] = result["keyword_hits"]
@@ -219,6 +233,7 @@ def score_business_model_text(business_text: str) -> dict:
 
         category_scores[category] = category_score
 
+    # Combine around the neutral base and clamp to [0, 100].
     total_score = BASE_SCORE + total_positive - total_negative
     total_score = max(0, min(round(total_score, 2), TOTAL_CAP))
 

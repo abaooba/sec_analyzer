@@ -1,6 +1,25 @@
+"""Risk scoring by keyword analysis of a filing's Risk Factors text.
+
+This is the archetype for all the text-based scorers (business_model, moat,
+geopolitics follow the same shape):
+
+  1. A dict of CATEGORIES -> list of regex keyword patterns.
+  2. Count how often each pattern appears, then "soften" raw counts so a section
+     that says "tariff" 40 times doesn't dwarf one that says it twice (the score
+     is about *presence/emphasis*, not raw frequency).
+  3. Weight each category and sum into a capped total.
+  4. Separately, pull a few example sentences per category as human-readable
+     "evidence" (also fed to the LLM later).
+
+Higher risk score = MORE risk language in the filing (it's a risk meter, so in
+the final opinion it's inverted: 100 - risk).
+"""
+
 import re
 
 
+# Each risk category maps to regex patterns. `\b` is a word boundary so
+# `\binflation\b` matches "inflation" but not "inflationary-something-else".
 RISK_KEYWORDS = {
     "macroeconomic": [
         r"\binflation\b",
@@ -93,6 +112,8 @@ RISK_KEYWORDS = {
     ],
 }
 
+# How much each category contributes — geopolitical/supply-chain risks are
+# weighted more heavily than generic macro risk.
 RISK_WEIGHTS = {
     "macroeconomic": 1.0,
     "supply_chain": 1.2,
@@ -102,21 +123,29 @@ RISK_WEIGHTS = {
     "concentration": 1.2,
 }
 
-CATEGORY_CAP = 15
-TOTAL_CAP = 100
+CATEGORY_CAP = 15   # max points any single category can add
+TOTAL_CAP = 100     # overall score ceiling
 
 
 def normalize_text(text: str) -> str:
+    """Lowercase the text so keyword matching is case-insensitive."""
     if not text:
         return ""
     return text.lower()
 
 
 def count_keyword_matches(pattern: str, text: str) -> int:
+    """How many times a regex pattern occurs in the text."""
     return len(re.findall(pattern, text))
 
 
 def soften_count(count: int) -> int:
+    """Dampen raw counts into 0..3 buckets (diminishing returns).
+
+    0 -> 0, 1-2 -> 1, 3-5 -> 2, 6+ -> 3. This stops one heavily-repeated term
+    from dominating; we care that a topic is present and emphasized, not the
+    literal occurrence count.
+    """
     if count <= 0:
         return 0
     if count <= 2:
@@ -127,6 +156,7 @@ def soften_count(count: int) -> int:
 
 
 def count_risk_keywords(risk_text: str) -> dict:
+    """Count + soften keyword hits for every risk category."""
     text = normalize_text(risk_text)
     results = {}
 
@@ -152,6 +182,7 @@ def count_risk_keywords(risk_text: str) -> dict:
 
 
 def score_risk_text(risk_text: str) -> dict:
+    """Top-level: produce the risk score + breakdown + evidence for one filing."""
     keyword_results = count_risk_keywords(risk_text)
     evidence_sentences = extract_risk_sentences(risk_text)
 
@@ -159,6 +190,7 @@ def score_risk_text(risk_text: str) -> dict:
     matched_keywords = {}
     total_score = 0
 
+    # score = softened_hits * category_weight, capped per category, then summed.
     for category, result in keyword_results.items():
         softened_hits = result["softened_total_hits"]
         weight = RISK_WEIGHTS.get(category, 1.0)
@@ -182,6 +214,11 @@ def score_risk_text(risk_text: str) -> dict:
     }
 
 def split_into_sentences(text: str) -> list[str]:
+    """Naive sentence splitter: break after . ! ? followed by whitespace.
+
+    `(?<=[.!?])` is a lookbehind — it splits *after* the punctuation without
+    consuming it. Good enough for evidence extraction (not perfect grammar).
+    """
     if not text:
         return []
 
@@ -192,6 +229,11 @@ def split_into_sentences(text: str) -> list[str]:
 
 
 def extract_risk_sentences(risk_text: str, max_sentences_per_category: int = 3) -> dict:
+    """Collect up to N example sentences per category that contain a keyword.
+
+    These become the "evidence sentences" surfaced to the user and handed to the
+    LLM so its narrative can cite real language from the filing.
+    """
     sentences = split_into_sentences(risk_text)
     category_sentences = {category: [] for category in RISK_KEYWORDS.keys()}
 

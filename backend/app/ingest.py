@@ -1,3 +1,13 @@
+"""Download SEC filing documents and record them in the DB.
+
+`ingest_company` is the first heavy step of the pipeline: given a CIK it pulls
+the company's submission history, selects a capped number of each interesting
+form type, downloads the primary HTML document for each, caches it on disk, and
+upserts a Filing row. `delete_local_filings_for_company` is the cleanup step run
+in a `finally:` block so we don't leave large HTML files lying around between
+runs (the DB rows are kept, just the on-disk cache is cleared).
+"""
+
 from pathlib import Path
 
 from sqlalchemy import select
@@ -8,8 +18,12 @@ from .models import Company, Filing
 from .sec_client import SECClient
 
 
+# The filing types we care about. 10-K/10-Q/8-K are US domestic; 20-F/6-K/40-F
+# are the foreign-issuer equivalents (annual / interim / Canadian).
 TARGET_FORMS = {"10-K", "10-Q", "8-K", "20-F", "6-K", "40-F"}
 
+# Cap how many of each form we ingest so we don't download a company's entire
+# multi-decade history — just enough recent ones for analysis & YoY comparison.
 FORM_LIMITS = {
     "10-K": 3,
     "10-Q": 6,
@@ -28,19 +42,24 @@ def ingest_company(cik: str):
     ticker_list = submissions.get("tickers", [])
     ticker = ticker_list[0] if ticker_list else ""
 
+    # The SEC returns recent filings as parallel arrays (column-oriented): the
+    # i-th filing is forms[i] + accession_numbers[i] + filing_dates[i] + ...
     recent = submissions["filings"]["recent"]
     forms = recent["form"]
     accession_numbers = recent["accessionNumber"]
     filing_dates = recent["filingDate"]
     primary_docs = recent["primaryDocument"]
 
+    # Ensure the on-disk cache directory exists before we start writing files.
     Path(settings.raw_filings_dir).mkdir(parents=True, exist_ok=True)
 
     print(f"Ingesting company: {submissions['name']} ({company_cik})")
     print(f"Ticker: {ticker}")
     print("Starting filing scan...")
 
+    # One session = one transaction for the whole ingest; committed at the end.
     with SessionLocal() as session:
+        # Upsert the Company row (insert if new, otherwise refresh its metadata).
         existing_company = session.get(Company, company_cik)
 
         if existing_company is None:
@@ -56,14 +75,18 @@ def ingest_company(cik: str):
             existing_company.name = submissions["name"]
             print("Company already exists in database. Metadata refreshed.")
 
+        # Counters purely for the end-of-run summary printout.
         processed_count = 0
         downloaded_count = 0
         skipped_count = 0
         updated_count = 0
         failed_count = 0
 
+        # Track how many of each form we've taken so we can stop at FORM_LIMITS.
         form_counts = {form: 0 for form in TARGET_FORMS}
 
+        # Walk the parallel arrays together. They're newest-first, so the first
+        # N of each form type are the most recent — exactly what we want.
         for form, accession_no, filing_date, primary_doc in zip(
             forms, accession_numbers, filing_dates, primary_docs
         ):
@@ -79,6 +102,7 @@ def ingest_company(cik: str):
             print(f"\nProcessing {form} | {filing_date} | {primary_doc}")
             filing_url = client.build_filing_url(company_cik, accession_no, primary_doc)
 
+            # Have we already recorded this exact filing (by accession number)?
             stmt = select(Filing).where(
                 Filing.cik == company_cik,
                 Filing.accession_no == accession_no,
@@ -86,6 +110,7 @@ def ingest_company(cik: str):
             existing_filing = session.execute(stmt).scalar_one_or_none()
 
             if existing_filing is not None:
+                # --- Path A: filing row exists; backfill URL / re-download if needed ---
                 print("Filing already exists in database.")
 
                 changed = False
@@ -98,6 +123,8 @@ def ingest_company(cik: str):
                     changed = True
                     print(f"Updated missing filing_url: {filing_url}")
 
+                # Re-download if we have no local copy or the cached file is gone
+                # (e.g. it was cleaned up after a previous run).
                 if not existing_filing.local_path or not resolved_existing_path or not resolved_existing_path.exists():
                     try:
                         print(f"Downloading filing HTML from: {filing_url}")
@@ -124,10 +151,12 @@ def ingest_company(cik: str):
 
                 continue
 
+            # --- Path B: brand-new filing; download it and insert a fresh row ---
             try:
                 print(f"Downloading: {filing_url}")
                 html = client.download_filing_html(filing_url)
 
+                # Cache filename encodes cik + accession + doc so it's unique.
                 local_filename = f"{company_cik}_{accession_no}_{primary_doc}"
                 local_path = Path(settings.raw_filings_dir) / local_filename
                 local_path.write_text(html, encoding="utf-8")
@@ -147,10 +176,11 @@ def ingest_company(cik: str):
                 print(f"Saved to: {local_path}")
 
             except Exception as e:
+                # One bad filing shouldn't abort the whole ingest.
                 failed_count += 1
                 print(f"Failed to process filing {accession_no}: {e}")
 
-        session.commit()
+        session.commit()  # persist company + all filing rows atomically
 
         print("\nIngestion complete.")
         print(f"Target filings processed: {processed_count}")
@@ -161,6 +191,12 @@ def ingest_company(cik: str):
 
 
 def delete_local_filings_for_company(cik: str):
+    """Delete the cached HTML files for a company and blank their local_path.
+
+    Run in a `finally:` after analysis so each request cleans up its own large
+    on-disk artifacts. The Filing DB rows survive (with local_path="") as a
+    record of what was seen; only the bytes on disk are removed.
+    """
     company_cik = str(cik).zfill(10)
 
     with SessionLocal() as session:
@@ -173,22 +209,23 @@ def delete_local_filings_for_company(cik: str):
 
         for filing in filings:
             if not filing.local_path:
-                continue
+                continue  # nothing cached for this row
 
             path = Path(filing.local_path)
             if filing.local_path:
+                # Resolve relative paths the same way they were stored.
                 path = resolve_storage_path(filing.local_path)
 
             try:
                 if path.exists() and path.is_file():
-                    path.unlink()
+                    path.unlink()  # actually delete the file
                     deleted_count += 1
                     print(f"Deleted local filing: {path}")
                 else:
                     missing_count += 1
                     print(f"File already missing: {path}")
 
-                filing.local_path = ""
+                filing.local_path = ""  # mark as no-longer-cached in the DB
 
             except Exception as e:
                 failed_count += 1

@@ -1,3 +1,13 @@
+"""FastAPI web layer — exposes the analyzer as a single HTTP endpoint.
+
+Run with: `uvicorn backend.api:app --reload`
+Then POST {"company_name": "Apple", "ticker": "AAPL"} to /analyze.
+
+This file is deliberately thin: it just wires an HTTP request to the same
+pipeline the CLI (main.py) uses — lookup -> ingest filings -> ingest facts ->
+build opinion -> clean up. All the real work lives in backend/app/.
+"""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -10,7 +20,8 @@ from backend.app.opinion import build_full_opinion
 
 app = FastAPI()
 
-# This is the CORS middleware — it lets your frontend talk to your backend
+# CORS middleware — lets a browser frontend on a different origin call this API.
+# allow_origins=["*"] permits any site; tighten to your real domain in prod.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # You can tighten this later
@@ -19,12 +30,14 @@ app.add_middleware(
 )
 
 class AnalyzeRequest(BaseModel):
+    """Request body schema; FastAPI validates incoming JSON against this."""
     company_name: str
     ticker: str | None = None
 
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
-    init_db()
+    """Resolve the company, run the full pipeline, and return the opinion JSON."""
+    init_db()  # ensure tables exist (idempotent)
     match = find_company_match(req.company_name, req.ticker)
     if not match:
         return {"error": f"Could not find company: {req.company_name}"}
@@ -34,9 +47,10 @@ def analyze(req: AnalyzeRequest):
     ticker = req.ticker or match.get("ticker", "")
 
     try:
-        ingest_company(cik)
-        ingest_company_facts(cik)
+        ingest_company(cik)          # download filings -> DB + disk cache
+        ingest_company_facts(cik)    # download XBRL financial facts -> DB
         result = build_full_opinion(cik, company_name, ticker)
-        return result
+        return result  # FastAPI serializes the dict to a JSON response
     finally:
+        # Always clear the on-disk HTML cache, even if analysis raised.
         delete_local_filings_for_company(cik)
