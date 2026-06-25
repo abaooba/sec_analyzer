@@ -235,7 +235,7 @@ def extract_risk_sentences(risk_text: str, max_sentences_per_category: int = 3) 
     LLM so its narrative can cite real language from the filing.
     """
     sentences = split_into_sentences(risk_text)
-    category_sentences = {category: [] for category in RISK_KEYWORDS.keys()}
+    category_sentences: dict[str, list[str]] = {category: [] for category in RISK_KEYWORDS.keys()}
 
     for sentence in sentences:
         normalized_sentence = sentence.lower()

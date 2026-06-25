@@ -4,3 +4,23 @@
 pythonpath = ["."]
 testpaths = ["backend/tests"]
 addopts = "-q"
+
+[tool.ruff]
+# The lint gate runs against the core library (backend/app) in CI. The entry
+# points (main.py / api.py) still carry intentional "legacy kept for reference"
+# duplicate defs (F811), so they are linted separately as a later cleanup.
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+# Ruff's default rule set (pyflakes + a slice of pycodestyle), pinned explicitly
+# so the gate stays stable across ruff versions.
+select = ["E4", "E7", "E9", "F"]
+
+[tool.mypy]
+# Type gate scoped to the core library. Default strictness (we do NOT require
+# full annotation coverage) plus ignoring missing third-party stubs
+# (feedparser / groq / trafilatura / httpx have none installed).
+files = ["backend/app"]
+python_version = "3.13"
+ignore_missing_imports = true

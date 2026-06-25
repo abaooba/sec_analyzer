@@ -189,7 +189,7 @@ def count_business_keywords(business_text: str) -> dict:
 
 def extract_business_sentences(business_text: str, max_sentences_per_category: int = 3) -> dict:
     sentences = split_into_sentences(business_text)
-    category_sentences = {category: [] for category in BUSINESS_MODEL_KEYWORDS.keys()}
+    category_sentences: dict[str, list[str]] = {category: [] for category in BUSINESS_MODEL_KEYWORDS.keys()}
 
     for sentence in sentences:
         normalized_sentence = sentence.lower()

@@ -324,7 +324,7 @@ def enrich_articles_with_full_text(
 def classify_articles(articles: list[dict]) -> dict:
     """Tally how many news articles fall into each geopolitical category, and
     keep up to 5 article references per category as evidence for the report."""
-    category_articles = {category: [] for category in GEOPOLITICAL_EVENT_KEYWORDS.keys()}
+    category_articles: dict[str, list[dict]] = {category: [] for category in GEOPOLITICAL_EVENT_KEYWORDS.keys()}
     category_counts = {category: 0 for category in GEOPOLITICAL_EVENT_KEYWORDS.keys()}
 
     for article in articles:

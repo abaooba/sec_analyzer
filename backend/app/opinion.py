@@ -83,7 +83,7 @@ def build_weaknesses(
 
 def build_recent_changes(change_result: dict) -> list[str]:
     """Translate the YoY change-detection output into readable change bullets."""
-    changes = []
+    changes: list[str] = []
 
     # If change detection bailed (e.g. <2 annual filings), there's nothing to say.
     if not change_result or change_result.get("message"):

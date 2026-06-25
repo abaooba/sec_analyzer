@@ -39,7 +39,7 @@ def format_large_number(value):
 
 def format_snapshot(snapshot: dict) -> dict:
     """Format a whole snapshot dict for display: ratios as %, money as B/M."""
-    formatted = {}
+    formatted: dict[str, str | None] = {}
 
     ratio_keys = {"operating_margin", "roe_proxy"}  # these are fractions -> show as %
 
@@ -83,7 +83,7 @@ def latest_fact(cik: str, tag_names: list[str], forms: list[str] | None = None):
         ]
 
         if not filtered:
-            filtered = rows  # fall back to everything if the filter emptied it
+            filtered = list(rows)  # fall back to everything if the filter emptied it
 
         # Newest first: most recently filed, then latest period covered.
         filtered.sort(

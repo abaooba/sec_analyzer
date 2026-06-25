@@ -13,7 +13,7 @@ import feedparser
 
 
 class RSSClient:
-    def fetch_feed(self, feed_url: str) -> dict:
+    def fetch_feed(self, feed_url: str) -> feedparser.FeedParserDict:
         """Download and parse an RSS/Atom feed into a feedparser result dict."""
         headers = {
             # Pretend to be a browser; some feeds reject unknown user-agents.

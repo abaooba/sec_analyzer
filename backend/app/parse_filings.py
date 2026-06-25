@@ -19,14 +19,22 @@ alternative start/end patterns. Pure regex/heuristics, no ML — deliberately so
 from __future__ import annotations
 
 import re
-from pathlib import Path
-from typing import Iterable
+from typing import Iterable, TypedDict
 
 from sqlalchemy import select
 
 from .config import resolve_storage_path
 from .db import SessionLocal
 from .models import Filing
+
+
+class _SectionCandidate(TypedDict):
+    """One candidate slice for a filing section: where it starts, its text, and
+    its length in words (used to pick the most substantive hit over TOC stubs)."""
+
+    start_index: int
+    text: str
+    word_count: int
 
 
 # Section-extraction prefers annual reports (richest disclosure) then interims.
@@ -177,15 +185,15 @@ def _find_section(
     if not text:
         return ""
 
-    fallback_candidates = []
+    fallback_candidates: list[_SectionCandidate] = []
 
     for pattern in start_patterns:
         matches = list(re.finditer(pattern, text, flags=re.IGNORECASE))
         if not matches:
             continue
 
-        candidates = []
-        seen_starts = []
+        candidates: list[_SectionCandidate] = []
+        seen_starts: list[int] = []
 
         for match in sorted(matches, key=lambda item: item.start()):
             start_index = match.start()
@@ -365,7 +373,7 @@ def _pick_best_filing(cik: str, preferred_forms: Iterable[str]) -> Filing | None
             filing.accession_no or "",
         )
 
-    filings.sort(key=sort_key)
+    filings = sorted(filings, key=sort_key)
     return filings[0]
 
 

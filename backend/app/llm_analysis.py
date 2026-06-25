@@ -150,6 +150,8 @@ MD&A EXCERPT:
 
         # Parse the model's JSON string and validate it against our schema.
         raw = response.choices[0].message.content
+        if not raw:
+            raise ValueError("LLM returned empty response content")
         data = json.loads(raw)
         return LLMAnalysis(**data)
 

@@ -1,9 +1,8 @@
 name: CI
 
-# Runs the test suite on every push and pull request. The tests are fully
-# offline (SEC/Groq are monkeypatched; the DB is in-memory), so no secrets are
-# needed. ruff + mypy gates are added once backend/app passes them cleanly
-# (see LEARNINGS.md — T1: ruff + mypy config + type-hint backfill).
+# Runs lint (ruff), type-check (mypy), and the test suite on every push and PR.
+# All three are scoped to the core library (backend/app) and fully offline
+# (SEC/Groq are monkeypatched; the DB is in-memory), so no secrets are needed.
 on:
   push:
   pull_request:
@@ -24,6 +23,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check backend/app
+
+      - name: Type-check (mypy)
+        run: mypy backend/app
 
       - name: Run tests
         run: pytest
