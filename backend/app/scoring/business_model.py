@@ -9,127 +9,20 @@ diversification, scalability, ecosystem strength) and DOWN for undesirable ones
 
 import re
 
+from ._keyword_config import scorer_config
 
-# Categories split into "good" and "bad" traits (see POSITIVE/NEGATIVE_WEIGHTS).
-BUSINESS_MODEL_KEYWORDS = {
-    "recurring_revenue": [
-        r"\bsubscription\b",
-        r"\bsubscriptions\b",
-        r"\bservices\b",
-        r"\bservice\b",
-        r"\blicensing\b",
-        r"\blicense\b",
-        r"\bmaintenance\b",
-        r"\bsupport\b",
-        r"\bcloud\b",
-        r"fee-based",
-        r"\brecurring\b",
-        r"service agreement",
-        r"long-term service",
-        r"\bupgrade\b",
-        r"aftermarket",
-        r"spare parts",
-        r"installed base",
-        r"consumables",
-    ],
-    "diversification": [
-        r"\bproducts\b",
-        r"\bservices\b",
-        r"\bsegments\b",
-        r"\bgeographic\b",
-        r"\binternational\b",
-        r"\bportfolio\b",
-        r"\bmultiple\b",
-        r"\bvariety\b",
-        r"line includes",
-        r"\bofferings\b",
-        r"end markets",
-        r"\bapplications\b",
-        r"product portfolio",
-        r"customer base",
-        r"\bregions\b",
-    ],
-    "scalability": [
-        r"\bplatform\b",
-        r"\bsoftware\b",
-        r"\bdigital\b",
-        r"\becosystem\b",
-        r"\bonline\b",
-        r"\bcloud\b",
-        r"\bintegrated\b",
-        r"\bservices\b",
-        r"\bmodular\b",
-        r"\bstandardized\b",
-        r"\bautomation\b",
-        r"productivity",
-        r"global service network",
-        r"service network",
-        r"installed base",
-    ],
-    "ecosystem_strength": [
-        r"\becosystem\b",
-        r"\bintegrated\b",
-        r"installed base",
-        r"\bcompatibility\b",
-        r"customer loyalty",
-        r"\bbrand\b",
-        r"customer collaboration",
-        r"application support",
-        r"supplier network",
-        r"service network",
-        r"\bworkflow\b",
-        r"\bqualification\b",
-    ],
-    "operational_intensity": [
-        r"\bmanufacturing\b",
-        r"\bassembly\b",
-        r"\bsupplier\b",
-        r"\bsuppliers\b",
-        r"\blogistics\b",
-        r"\binventory\b",
-        r"\bcomponent\b",
-        r"\bdistribution\b",
-        r"capital intensive",
-        r"\bfacility\b",
-        r"\bfacilities\b",
-        r"production capacity",
-        r"service organization",
-    ],
-    "customer_dependency": [
-        r"depend on",
-        r"depend significantly",
-        r"single source",
-        r"\bconcentration\b",
-        r"\bchannel\b",
-        r"\breseller\b",
-        r"third-party",
-        r"limited number of customers",
-        r"\bkey customer\b",
-        r"\btop customer\b",
-        r"customer concentration",
-        r"supplier concentration",
-        r"sole supplier",
-    ],
-}
-
-# Traits that ADD to the score (durable, high-quality business characteristics).
-POSITIVE_WEIGHTS = {
-    "recurring_revenue": 1.4,
-    "diversification": 1.2,
-    "scalability": 1.3,
-    "ecosystem_strength": 1.5,
-}
-
-# Traits that SUBTRACT from the score (fragility / lower-quality characteristics).
-NEGATIVE_WEIGHTS = {
-    "operational_intensity": 1.0,
-    "customer_dependency": 1.2,
-}
-
-POSITIVE_CAP = 15   # per positive category cap
-NEGATIVE_CAP = 12   # per negative category cap
-TOTAL_CAP = 100
-BASE_SCORE = 50     # neutral starting point: final = 50 + positives - negatives
+# Keyword regex patterns, the positive/negative category weights, caps, and the
+# neutral base score all load from keywords.toml (via _keyword_config) so they can
+# be tuned/generalized without touching code. Module-level names are unchanged, so
+# the rest of this file (the two-sided scoring) is intact.
+_CFG = scorer_config("business_model")
+BUSINESS_MODEL_KEYWORDS: dict[str, list[str]] = _CFG["keywords"]
+POSITIVE_WEIGHTS: dict[str, float] = _CFG["positive_weights"]
+NEGATIVE_WEIGHTS: dict[str, float] = _CFG["negative_weights"]
+POSITIVE_CAP: int = _CFG["positive_cap"]
+NEGATIVE_CAP: int = _CFG["negative_cap"]
+TOTAL_CAP: int = _CFG["total_cap"]
+BASE_SCORE: int = _CFG["base_score"]
 
 
 def normalize_text(text: str) -> str:

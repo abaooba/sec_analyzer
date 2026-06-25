@@ -47,3 +47,27 @@ distribution_advantages = ['direct sales', '\bdistribution\b', '\bchannel\b', 'g
 intellectual_property = ['intellectual property', '\bpatent\b', '\bpatents\b', '\bproprietary\b', '\btrademark\b', '\bcopyright\b', 'patent portfolio', 'trade secret', 'know-how', 'licensed technology', 'process technology', 'proprietary process', 'photolithography', '\beuv\b', 'extreme ultraviolet', 'high-na']
 customer_dependency_lock_in = ['sole supplier', 'single supplier', 'critical equipment', 'mission critical', '\byield\b', '\bthroughput\b', '\buptime\b', 'qualification cycle', '\bvalidated\b', 'replacement cycle']
 technology_leadership = ['technology leadership', 'technology leader', 'process roadmap', 'next-generation', 'advanced node', '\br&d\b', 'research and development', '\binnovation\b', 'roadmap', 'development program']
+
+[business_model]
+positive_cap = 15
+negative_cap = 12
+total_cap = 100
+base_score = 50
+
+[business_model.positive_weights]
+recurring_revenue = 1.4
+diversification = 1.2
+scalability = 1.3
+ecosystem_strength = 1.5
+
+[business_model.negative_weights]
+operational_intensity = 1.0
+customer_dependency = 1.2
+
+[business_model.keywords]
+recurring_revenue = ['\bsubscription\b', '\bsubscriptions\b', '\bservices\b', '\bservice\b', '\blicensing\b', '\blicense\b', '\bmaintenance\b', '\bsupport\b', '\bcloud\b', 'fee-based', '\brecurring\b', 'service agreement', 'long-term service', '\bupgrade\b', 'aftermarket', 'spare parts', 'installed base', 'consumables']
+diversification = ['\bproducts\b', '\bservices\b', '\bsegments\b', '\bgeographic\b', '\binternational\b', '\bportfolio\b', '\bmultiple\b', '\bvariety\b', 'line includes', '\bofferings\b', 'end markets', '\bapplications\b', 'product portfolio', 'customer base', '\bregions\b']
+scalability = ['\bplatform\b', '\bsoftware\b', '\bdigital\b', '\becosystem\b', '\bonline\b', '\bcloud\b', '\bintegrated\b', '\bservices\b', '\bmodular\b', '\bstandardized\b', '\bautomation\b', 'productivity', 'global service network', 'service network', 'installed base']
+ecosystem_strength = ['\becosystem\b', '\bintegrated\b', 'installed base', '\bcompatibility\b', 'customer loyalty', '\bbrand\b', 'customer collaboration', 'application support', 'supplier network', 'service network', '\bworkflow\b', '\bqualification\b']
+operational_intensity = ['\bmanufacturing\b', '\bassembly\b', '\bsupplier\b', '\bsuppliers\b', '\blogistics\b', '\binventory\b', '\bcomponent\b', '\bdistribution\b', 'capital intensive', '\bfacility\b', '\bfacilities\b', 'production capacity', 'service organization']
+customer_dependency = ['depend on', 'depend significantly', 'single source', '\bconcentration\b', '\bchannel\b', '\breseller\b', 'third-party', 'limited number of customers', '\bkey customer\b', '\btop customer\b', 'customer concentration', 'supplier concentration', 'sole supplier']
