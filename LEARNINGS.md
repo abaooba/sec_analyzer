@@ -958,6 +958,18 @@ mocking the feed (offline) — commit `b059f12`. Test-only. 105 → 110. Next: t
 `geopolitics` news×filing fusion (`classify_articles` + overlap scoring), the most
 complex untested module.
 
+### 2026-06-25 — Test-debt (3): geopolitics classification helpers
+
+The geopolitics fusion (`score_geopolitical_impact`) does network+DB, but its pure
+building blocks were untested. Added `test_geopolitics.py` (5): `build_article_text`,
+`soften_count`, `matches_any_pattern`, `count_keywords` (per-category soften), and
+`classify_articles` (category tallies + evidence capped at 5) — commit `8b1f6c8`.
+Test-only. 110 → 115. Pure-logic test gaps are now largely closed (company_lookup,
+rss_ingest, geopolitics + the T1 set); remaining untested code is mostly thin
+network/DB wrappers. Next: **docs** — document the new T4 modules (forensic,
+http_client, _keyword_config) + the new opinion output blocks in the README / §5
+file-map.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
