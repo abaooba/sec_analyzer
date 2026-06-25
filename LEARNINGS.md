@@ -1031,6 +1031,38 @@ client, config/loader, and the YoY/trajectory logic are covered offline. The saf
 additive runway is exhausted → next is a consolidation unit (self-review the session
 diff + a CHANGELOG), then land with the closing artifact.
 
+### 2026-06-25 — SESSION LANDING (autonomous run complete)
+
+The safe, additive autonomous backlog is complete; landing well ahead of the 7:17 PM
+boundary rather than padding (everything left needs user input, external data, or an
+attended refactor — see "Parked"). Gate green throughout: **pytest 141**, ruff over
+all of `backend`, mypy over `backend/app` + the entry points. ~30 tested units, all
+local (nothing pushed).
+
+**Shipped (T0–T4):**
+- **T0 Security** ✅ — `.env` untracked + secret-free template; keys rotated (user).
+- **T1 Safety net** ✅ — pytest (53 → 141) + ruff + mypy gate in CI; entry-point cruft removed.
+- **T2 Robustness** ✅ — CWD-safe `.env`; TLS verification (factory + `TLS_VERIFY`); LLM
+  retry/fallback; env-configurable CORS; structured logging; all five scorers'
+  keywords/weights externalized to `keywords.toml`.
+- **T4 Signature features** ✅ (5) — confidence, forensic red-flags, score trajectory,
+  contradiction detector, all wired into the LLM prompt + CLI report.
+- **Test-debt** ✅ — comprehensive offline coverage (every scorer, the blend, the
+  features, the `/analyze` endpoint, the HTTP clients, config, YoY/trajectory).
+- **Docs + CHANGELOG** ✅; **self-review** of the full session diff ✅ (clean).
+
+**Parked (with reasons):**
+- Backtesting + most T5 reach features (peer-relative, insider/institutional, RAG Q&A,
+  frontend, PDF export) — need **external data sources**.
+- Async rate-limiter rewrite — an **invasive whole-codebase async** change; unsafe
+  unattended, left for an attended session.
+- CORS secure default / peer set / git-history scrub — **user/deploy decisions**.
+
+**Clear next steps:**
+1. Review the diff and **push** when ready (CI is green and activates on push).
+2. Optionally tighten the CORS default + decide on the async rewrite (attended).
+3. Pick the next T5 feature direction — most need a data source added first.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
@@ -1055,11 +1087,12 @@ diff + a CHANGELOG), then land with the closing artifact.
   resolved in the T1 capstone (`165974e`). Async rate limiter ⏸ **deferred-by-
   judgment** — an invasive whole-codebase async rewrite of working code, too risky
   to run unattended; revisit attended.
-- **T4 SIGNATURE FEATURES** — 🟦 mostly done (T0–T2 ✅; additive only while
-  unattended). Confidence ✅ (`2b9c33e`), forensic ✅ (`eef191a`), trajectory ✅
-  (`ed710e5`), signals→LLM ✅ (`3062ac0`), contradictions ✅ (`0efa4fc`), CLI surfacing
-  ✅ (`ad543d1`). Remaining: backtesting → STOP-and-surface (needs price data). Clean
-  additive runway now pivots to **test-debt + docs** (see latest log entry).
-  (T3 async rewrite deferred-by-judgment.)
-- **T5 REACH FEATURES** — ⬜ (insider/institutional, peer-relative, contradiction
-  detector, RAG Q&A, frontend, watchlist/alerts, PDF export).
+- **T4 SIGNATURE FEATURES** — ✅ **5 shipped** (confidence `2b9c33e`, forensic
+  `eef191a`, trajectory `ed710e5`, contradictions `0efa4fc`; all wired into LLM
+  `3062ac0` + CLI `ad543d1`). Test-debt + docs + CHANGELOG done. Only backtesting
+  remains → **parked** (needs external price/outcome data). (T3 async rewrite
+  deferred-by-judgment — invasive, attended only.)
+- **T5 REACH FEATURES** — ⬜ **parked** — insider/institutional, peer-relative, RAG
+  Q&A, frontend, watchlist/alerts, PDF export. Most need new external data sources or
+  are large scope → an attended / user-directed effort, not autonomous-loop work.
+  (The contradiction detector originally listed here shipped under T4.)
