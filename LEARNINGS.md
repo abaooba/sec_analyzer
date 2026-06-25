@@ -662,15 +662,38 @@ to `main.py`/`api.py` with a per-file-ignore for their *intentional* `F811` "leg
 kept for reference" defs (non-destructive — the author kept that code on purpose).
 (T0 key rotation ⏳ user-side.)
 
+### 2026-06-25 — T1 capstone: widen the ruff gate to the whole backend
+
+**What** — the lint gate ran only on `backend/app`; the entry points were
+unchecked. The blocker was `main.py`'s live cruft: an unused `import json` (F401 —
+leftover scaffolding for the commented legacy `main()` reference block) and a
+duplicate `db/ingest/fundamentals/opinion` import block (F811×5) re-imported
+verbatim in the ACTIVE section below it. Removed both — the commented "kept for
+reference" block and the active code are untouched; those imports are simply
+declared once now.
+
+**Fix (commit `165974e`)** — `ruff check backend` (CI) now covers app + entry
+points + tests, clean, **with no per-file-ignores** (the cruft was removed, not
+suppressed). `api.py` was already clean. mypy stays scoped to `backend/app` —
+widening it would need real type work on the entry points (future).
+
+**Verification** — `ruff check backend` clean; `main.py` compiles and keeps its
+`if __name__ == "__main__"` guard (so dropping the duplicate imports changed no
+runtime behavior); `mypy backend/app` clean; `pytest` **71 passed**.
+
+**T1 is now fully complete**: pytest (71) + ruff (whole `backend`) + mypy
+(`backend/app`) all gated in CI.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — code remediation ✅ (untrack `.env`, fix `.gitignore`, add
   `.env.example`; committed). `.env.example` re-tracked ✅ (`f9bb8f7`) after the
   cleanup-pass commit `9b3234a` silently dropped it from tracking. Key rotation ⏳
   **BLOCKED on user** (provider-side; cannot be done autonomously).
-- **T1 SAFETY NET** — ✅ **complete**. pytest suite ✅ (53 tests). GitHub Actions
-  CI ✅. ruff + mypy config + type-hint backfill ✅ (`7bb0e48`: 16 issues → 0, gate
-  scoped to `backend/app`, both wired into CI). Remaining nit: 7 intentional
-  `F811`s in `main.py`/`api.py` (entry points) → fold into a T3 cleanup unit.
+- **T1 SAFETY NET** — ✅ **complete**. pytest (71 tests) + ruff (whole `backend`
+  tree) + mypy (`backend/app`) all gated in CI. ruff+mypy config + 16-issue
+  type-hint backfill (`7bb0e48`); gate later widened to the entry points with
+  `main.py` cruft removed, no ignores (`165974e`). Open (separate, larger): widen
+  mypy to the entry points (they aren't fully typed).
 - **T2 ROBUSTNESS** — 🟦 in progress. `.env` CWD-fix ✅ (`8a1ed46`), TLS
   verification ✅ (`d970560`) → uniform across all clients ✅ (`ba103a5`), LLM
   retry+fallback ✅ (`b95d3a5`), env-configurable CORS ✅ (`e68aa01`). All T2
