@@ -833,6 +833,28 @@ filing-text-only→55/moderate, None-metrics-don't-count + odd inputs safe. 75 �
 **Next** — T4 continues: score **trajectory** (multi-year overall-score history),
 then forensic red-flag detection, then backtesting.
 
+### 2026-06-25 — T4 SIGNATURE FEATURES (2): forensic red-flag scorer
+
+**The feature (commit `eef191a`)** — new `backend/app/scoring/forensic.py`, a keyword
+scorer (same engine as risk.py, primitives reused) for accounting/disclosure red
+flags: going-concern, restatement, material weakness, impairment, related-party,
+liquidity/covenant, SEC investigation, auditor change (8 categories in keywords.toml
+`[forensic]`). `build_full_opinion` scans risk-factors/MD&A/business text and adds a
+discrete `forensic` block (`{total_forensic_score, flags, evidence_sentences, ...}`).
+**Crucially NOT folded into the weighted overall score** — flags are surfaced
+explicitly with evidence so a real red flag is never averaged away by the blend.
+
+**Tests** — `test_forensic.py` (5): clean → no flags, going-concern fires with
+evidence, multiple flags detected, keyword/weight alignment, score capped [0,100].
+79 → 84; `test_opinion` confirms `build_full_opinion` still works end-to-end.
+
+**Verification** — `pytest` **84 passed**; `ruff` + `mypy` clean (27 files).
+
+**Next** — T4 score **trajectory** (check `change_detection` for reusable
+filing-parsing plumbing first; a light YoY-direction block if a true multi-year
+re-score is too heavy for unattended work). Backtesting needs external price/outcome
+data → will STOP-and-surface rather than fake.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
@@ -858,7 +880,8 @@ then forensic red-flag detection, then backtesting.
   judgment** — an invasive whole-codebase async rewrite of working code, too risky
   to run unattended; revisit attended.
 - **T4 SIGNATURE FEATURES** — 🟦 in progress (T0–T2 all ✅; additive features only
-  while unattended). Confidence meta-score ✅ (`2b9c33e`). Next: score trajectory,
-  forensic red-flags, backtesting.
+  while unattended). Confidence meta-score ✅ (`2b9c33e`), forensic red-flag scorer ✅
+  (`eef191a`). Next: score trajectory; backtesting (needs external price data →
+  STOP-and-surface). (T3 async rewrite deferred-by-judgment.)
 - **T5 REACH FEATURES** — ⬜ (insider/institutional, peer-relative, contradiction
   detector, RAG Q&A, frontend, watchlist/alerts, PDF export).
