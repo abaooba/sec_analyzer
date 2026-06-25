@@ -432,8 +432,12 @@ user to **commit the cleanup pass**, which immediately unblocks T1-ruff/mypy →
 - **T2 ROBUSTNESS** — ⬜ (CORS scope, drop `verify=False`, logging, externalize
   scoring keywords/weights, LLM validation retry+fallback; also the `load_dotenv`
   path bug found above).
-- **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ⬜ (only
-  remaining additive unit while WIP stays uncommitted). Async rate limiter ⬜
+- **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ✅ investigated
+  → **no-op**: `beautifulsoup4`/`justext`/`courlan`/`dateparser` aren't unused —
+  they're transitive deps of `trafilatura`/`htmldate`/`lxml` (pip reinstalls them
+  regardless), and `requirements.txt` is pip-freeze-style, so pruning only loosens
+  pins. Leave the freeze intact, or adopt a `requirements.in` (direct deps) +
+  pip-compile flow — a user call, not done autonomously. Async rate limiter ⬜
   (blocked — edits `sec_client.py` WIP).
 - **T4 SIGNATURE FEATURES** — ⬜ blocked until T0–T1 done (forensics scores,
   confidence, trajectory, backtesting).
