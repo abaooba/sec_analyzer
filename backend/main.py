@@ -95,6 +95,40 @@ def print_dict_section(title: str, data: dict):
         print(f"{label}: {value}")
 
 
+def format_signature_section(opinion: dict) -> str:
+    """Render the confidence / forensic / trajectory / contradictions blocks as a
+    text section for the CLI report. Pure (returns a string) so it's unit-testable.
+    """
+    lines = []
+
+    confidence = opinion.get("confidence") or {}
+    if confidence:
+        lines.append(
+            f"Analysis confidence: {confidence.get('level', 'n/a')} "
+            f"({confidence.get('score', 'N/A')}/100)"
+        )
+
+    forensic = opinion.get("forensic") or {}
+    flags = forensic.get("flags") or []
+    rendered = ", ".join(flag.replace("_", " ") for flag in flags) if flags else "none detected"
+    lines.append(f"Forensic red flags: {rendered}")
+
+    trends = (opinion.get("score_trajectory") or {}).get("trends") or {}
+    if trends:
+        parts = [
+            f"{dim.replace('_', ' ')} {trend['direction']} ({trend['change']:+})"
+            for dim, trend in trends.items()
+        ]
+        lines.append("Score trajectory: " + "; ".join(parts))
+
+    contradictions = opinion.get("contradictions") or []
+    if contradictions:
+        lines.append("Contradictions / tensions:")
+        lines.extend(f"  - {note}" for note in contradictions)
+
+    return "\n".join(lines)
+
+
 def main():
     # Configure logging so the library's progress/diagnostic logs (info+) show on
     # the console for CLI users, formatted plainly like the old prints.
@@ -157,6 +191,9 @@ def main():
         print_list_section("Strengths", result.get("strengths", []))
         print_list_section("Weaknesses", result.get("weaknesses", []))
         print_list_section("Recent Changes", result.get("recent_changes", []))
+
+        print_section_title("Signature Signals")
+        print(format_signature_section(result))
 
         print_dict_section("Financial Snapshot", formatted_financials)
 
