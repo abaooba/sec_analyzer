@@ -489,6 +489,49 @@ fails to load and the LLM degrades to rule-only). Then CORS scope, drop
 LLM-validation retry+fallback. Adjacent small cleanup: the 7 entry-point `F811`s.
 T0 key rotation remains the only ⏳ user-blocked item.
 
+### 2026-06-25 — T2 ROBUSTNESS (part 1): CWD-independent `.env` loading
+
+**The bug** — `config.py` called a bare `load_dotenv()`, which searches *upward
+from the current working directory*. Empirically (this machine): launched from the
+repo root it loads `./.env` and the Groq key *is* present — so it looks fine and
+hid the defect. But the search is CWD-dependent: a process launched from outside
+the repo tree (a systemd service, an installed console entry point, any other cwd)
+finds **no** `.env`, so `GROQ_API_KEY` silently stays unset and `llm_analysis`
+quietly degrades to rule-only output with no error. (This corrects the T1-entry's
+guess that it "misses `backend/app/.env` from the repo root" — the real trigger is
+launching from *outside* the tree. Verified bug→fix by importing `config` from
+`/tmp`: Groq key empty before, loaded after.)
+
+**Also surfaced** — there are **two** `.env` files on disk: the canonical repo-root
+`./.env` (exactly the 6 vars `config.py` reads, matching `.env.example`) and a
+legacy `backend/app/.env` (those 6 + the dead `NEWS_API_*` / `PROCESSED_DATA_DIR`
+vars T0 already stopped reading). Bare `load_dotenv()` made *which* one wins depend
+on the launch dir — another facet of the nondeterminism.
+
+**The fix (commit `8a1ed46`)** — extracted `_load_env_files(*paths) -> list[Path]`:
+loads each existing `.env` by its **absolute path** (`override=False`, so a value
+already in the real environment still wins) and returns what it loaded. At import
+we call it with `(REPO_ROOT/".env", BACKEND_DIR/"app"/".env")` — repo-root
+canonical first, legacy fallback second — both resolved relative to `__file__`, so
+loading no longer depends on the cwd. Moved `BACKEND_DIR`/`REPO_ROOT` above the
+call so they're in scope for it.
+
+**Tests** — new `backend/tests/test_config.py` (4): explicit-path load,
+skip-missing, no-override (real env wins), and first-path-wins precedence (why
+repo-root beats legacy). All use throwaway `tmp_path` `.env` files — never the
+developer's real `.env` — so they stay fully offline / CI-safe.
+
+**Verification** — `pytest` **57 passed** (53 + 4); `ruff check backend/app` clean;
+`mypy backend/app` clean; manual `/tmp` import confirms the Groq key now loads
+regardless of launch directory.
+
+**Now unblocked / next iteration** — T2 continues. Remaining T2 items (all edit
+`backend/app`): drop `verify=False` (TLS verification disabled in `sec_client.py`
+and `rss_client.py`), tighten CORS (`allow_origins=["*"]` in `api.py`), structured
+`logging` over bare `print`, externalize scoring keywords/weights, LLM-validation
+retry+fallback. Smaller adjacent cleanup: the 7 entry-point `F811`s. (T0 key
+rotation still ⏳ user-side.)
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — code remediation ✅ (untrack `.env`, fix `.gitignore`, add
   `.env.example`; committed). `.env.example` re-tracked ✅ (`f9bb8f7`) after the
@@ -498,11 +541,11 @@ T0 key rotation remains the only ⏳ user-blocked item.
   CI ✅. ruff + mypy config + type-hint backfill ✅ (`7bb0e48`: 16 issues → 0, gate
   scoped to `backend/app`, both wired into CI). Remaining nit: 7 intentional
   `F811`s in `main.py`/`api.py` (entry points) → fold into a T3 cleanup unit.
-- **T2 ROBUSTNESS** — ⬜ **now unblocked** (cleanup pass committed, so `backend/app`
-  edits no longer collide with WIP). Best first unit: the `load_dotenv` path bug
-  (config.py — bare `load_dotenv()` misses `backend/app/.env` from repo root → LLM
-  silently degrades to rule-only). Then CORS scope, drop `verify=False`, structured
-  logging, externalize scoring keywords/weights, LLM-validation retry+fallback.
+- **T2 ROBUSTNESS** — 🟦 in progress. `load_dotenv` CWD-dependence ✅ (`8a1ed46`:
+  load `.env` by explicit absolute path, + 4 tests). Remaining: drop `verify=False`
+  (TLS, `sec_client.py`/`rss_client.py`), tighten CORS (`allow_origins=["*"]` in
+  `api.py`), structured logging over `print`, externalize scoring keywords/weights,
+  LLM-validation retry+fallback.
 - **T3 CLEANUP** — 🟦 root README ✅ (committed). Prune-unused-deps ✅ investigated
   → **no-op**: `beautifulsoup4`/`justext`/`courlan`/`dateparser` aren't unused —
   they're transitive deps of `trafilatura`/`htmldate`/`lxml` (pip reinstalls them
