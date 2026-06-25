@@ -855,6 +855,32 @@ filing-parsing plumbing first; a light YoY-direction block if a true multi-year
 re-score is too heavy for unattended work). Backtesting needs external price/outcome
 data → will STOP-and-surface rather than fake.
 
+### 2026-06-25 — T4 SIGNATURE FEATURES (3): multi-year score trajectory
+
+**The feature (commit `ed710e5`)** — `build_score_trajectory()` in
+`change_detection.py`: the risk / business-model / moat **text** scores across the
+company's last N (default 4) annual filings, oldest→newest, plus a per-dimension
+trend (latest delta + up/down/flat). Reuses the existing filing-parse plumbing
+(`get_latest_annual_filings`, generalized from `get_latest_two`;
+`extract_sections_from_filing`) and the text scorers. **Only the text-based scores
+get a trajectory** — financials are point-in-time XBRL facts and geopolitics is live
+news, so neither has a per-filing history. Best-effort: filings whose cached HTML
+can't load are skipped. `build_full_opinion` surfaces a `score_trajectory` block
+(additive; blend untouched). `test_opinion` mocks it (it hits the DB, like
+`detect_filing_changes`).
+
+**Tests** — `test_trajectory.py` (4): trend direction (up/down/flat), <2 points→no
+trends, oldest→newest ordering, skips unloadable filings. 84 → 88; `ruff`+`mypy` clean.
+
+**Known redundancy (noted, not fixed)** — `build_full_opinion` now parses the latest
+2 annual filings twice (in `detect_filing_changes` and `build_score_trajectory`).
+Offline + bounded, so acceptable; consolidating would touch `detect_filing_changes`
+(riskier) — a future attended optimization.
+
+**Next** — backtesting needs external price/outcome data → will **STOP-and-surface**.
+So next safe additive unit: wire the new confidence/forensic/trajectory signals into
+the LLM prompt (so the narrative can cite them), or a contradiction unit.
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
@@ -880,8 +906,9 @@ data → will STOP-and-surface rather than fake.
   judgment** — an invasive whole-codebase async rewrite of working code, too risky
   to run unattended; revisit attended.
 - **T4 SIGNATURE FEATURES** — 🟦 in progress (T0–T2 all ✅; additive features only
-  while unattended). Confidence meta-score ✅ (`2b9c33e`), forensic red-flag scorer ✅
-  (`eef191a`). Next: score trajectory; backtesting (needs external price data →
-  STOP-and-surface). (T3 async rewrite deferred-by-judgment.)
+  while unattended). Confidence ✅ (`2b9c33e`), forensic red-flags ✅ (`eef191a`),
+  score trajectory ✅ (`ed710e5`). Next: surface new signals to the LLM prompt / a
+  contradiction unit. Backtesting needs external price data → STOP-and-surface.
+  (T3 async rewrite deferred-by-judgment.)
 - **T5 REACH FEATURES** — ⬜ (insider/institutional, peer-relative, contradiction
   detector, RAG Q&A, frontend, watchlist/alerts, PDF export).
