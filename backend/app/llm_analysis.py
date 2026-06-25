@@ -68,7 +68,8 @@ Rules:
 - Output ONLY valid JSON with no markdown fences, no preamble, no explanation outside the JSON
 - Cite actual language from the filings when possible
 - Avoid generic boilerplate that could apply to any company
-- If filing text is sparse or unavailable, note that limitation explicitly"""
+- If filing text is sparse or unavailable, note that limitation explicitly
+- Temper conviction by the ANALYSIS CONFIDENCE; surface any FORENSIC RED FLAGS explicitly in red_flags; reference the SCORE TRAJECTORY direction in the thesis where relevant"""
 
 
 def _truncate(text: str, max_chars: int) -> str:
@@ -87,6 +88,35 @@ def _build_evidence_block(evidence: dict) -> str:
             for s in sentences[:2]:
                 lines.append(f"  - {s}")
     return "\n".join(lines) or "No evidence sentences extracted."
+
+
+def _build_forensic_block(forensic: dict) -> str:
+    """List the forensic red flags that fired, with one evidence sentence each."""
+    flags = forensic.get("flags", []) if forensic else []
+    if not flags:
+        return "None detected."
+    evidence = forensic.get("evidence_sentences", {})
+    lines = []
+    for flag in flags:
+        sentences = evidence.get(flag, [])
+        example = f' — e.g. "{sentences[0]}"' if sentences else ""
+        lines.append(f"  - {flag.replace('_', ' ').upper()}{example}")
+    return "\n".join(lines)
+
+
+def _build_trajectory_block(trajectory: dict) -> str:
+    """Summarize the multi-year direction of the text-based scores."""
+    trends = trajectory.get("trends", {}) if trajectory else {}
+    count = trajectory.get("filings_compared", 0) if trajectory else 0
+    if not trends:
+        return f"Not enough annual filings for a trend ({count} compared)."
+    lines = [f"(across {count} annual filings)"]
+    for dimension, trend in trends.items():
+        lines.append(
+            f"  - {dimension.replace('_', ' ').title()}: "
+            f"{trend['direction']} ({trend['change']:+})"
+        )
+    return "\n".join(lines)
 
 
 def _request_analysis(client: Groq, user_message: str) -> LLMAnalysis:
@@ -131,6 +161,9 @@ def generate_llm_analysis(
     metrics = details.get("financial", {}).get("metrics_used", {})
     evidence = details.get("risk", {}).get("evidence_sentences", {})
     change_details = details.get("change_detection", {})
+    confidence = opinion_data.get("confidence", {})
+    forensic = opinion_data.get("forensic", {})
+    trajectory = opinion_data.get("score_trajectory", {})
 
     score_changes_str = str(change_details.get("score_changes", "No change data."))[:600]
 
@@ -143,6 +176,14 @@ RULE-BASED SCORES (0–100):
 - Moat / Competitive Position: {scores.get("moat", "N/A")}
 - Geopolitical Impact: {scores.get("geopolitical", "N/A")}  (higher = more exposure)
 - Overall Score: {opinion_data.get("overall_score", "N/A")} / 100
+
+ANALYSIS CONFIDENCE: {confidence.get("level", "n/a")} ({confidence.get("score", "N/A")}/100) — how much real data backs these scores; weight your conviction accordingly.
+
+FORENSIC RED FLAGS (accounting/disclosure; NOT in the overall score — surface these in red_flags):
+{_build_forensic_block(forensic)}
+
+SCORE TRAJECTORY (text-based scores across recent annual filings):
+{_build_trajectory_block(trajectory)}
 
 KEY FINANCIAL METRICS:
 - Revenue: {metrics.get("revenue", "N/A")}

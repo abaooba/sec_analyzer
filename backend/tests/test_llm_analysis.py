@@ -93,3 +93,41 @@ def test_logs_warning_after_exhausting_retries(monkeypatch, caplog):
 
     assert result is None
     assert any("unavailable" in r.getMessage().lower() for r in caplog.records)
+
+
+def test_build_forensic_block_lists_flags():
+    from backend.app.llm_analysis import _build_forensic_block
+
+    block = _build_forensic_block(
+        {
+            "flags": ["going_concern", "restatement"],
+            "evidence_sentences": {"going_concern": ["substantial doubt exists"]},
+        }
+    )
+    assert "GOING CONCERN" in block
+    assert "substantial doubt exists" in block
+    assert "RESTATEMENT" in block
+
+
+def test_build_forensic_block_none():
+    from backend.app.llm_analysis import _build_forensic_block
+
+    assert _build_forensic_block({"flags": []}) == "None detected."
+    assert _build_forensic_block({}) == "None detected."
+
+
+def test_build_trajectory_block():
+    from backend.app.llm_analysis import _build_trajectory_block
+
+    block = _build_trajectory_block(
+        {"filings_compared": 3, "trends": {"risk": {"change": 5.0, "direction": "up"}}}
+    )
+    assert "3 annual filings" in block
+    assert "Risk: up" in block
+
+
+def test_build_trajectory_block_insufficient():
+    from backend.app.llm_analysis import _build_trajectory_block
+
+    assert "Not enough" in _build_trajectory_block({"filings_compared": 1, "trends": {}})
+    assert "Not enough" in _build_trajectory_block({})
