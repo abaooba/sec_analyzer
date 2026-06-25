@@ -18,6 +18,7 @@ Higher score = more geopolitical pressure (inverted in the final opinion).
 
 import re
 
+from ._keyword_config import scorer_config
 from ..article_extractor import extract_article_text
 from ..parse_filings import extract_latest_filing_sections, combine_section_texts
 from ..rss_ingest import search_company_rss_news
@@ -29,206 +30,14 @@ from ..rss_ingest import search_company_rss_news
 FULL_TEXT_ARTICLE_LIMIT = 5
 
 
-# Patterns used to classify news articles into geopolitical event categories.
-# Matched against title + summary, plus full body text when we fetched it.
-GEOPOLITICAL_EVENT_KEYWORDS = {
-    "tariffs_trade": [
-        r"\btariff\b",
-        r"\btariffs\b",
-        r"trade war",
-        r"trade restrictions",
-        r"trade tensions",
-        r"import duties",
-        r"export duties",
-        r"customs duties",
-        r"trade barrier",
-    ],
-    "sanctions_export_controls": [
-        r"\bsanctions\b",
-        r"export controls",
-        r"\bblacklist\b",
-        r"entity list",
-        r"restricted exports",
-        r"licensing restrictions",
-        r"license denial",
-        r"export license",
-        r"national security restrictions",
-    ],
-    "war_conflict": [
-        r"\bwar\b",
-        r"\bconflict\b",
-        r"\bmilitary\b",
-        r"\binvasion\b",
-        r"\bmissile\b",
-        r"\bhostilities\b",
-        r"\battack\b",
-        r"armed conflict",
-        r"cross-strait",
-    ],
-    "supply_chain_disruption": [
-        r"supply chain",
-        r"\bmanufacturing\b",
-        r"\bsupplier\b",
-        r"\bsuppliers\b",
-        r"\bshipping\b",
-        r"\blogistics\b",
-        r"\bdisruption\b",
-        r"\bfactory\b",
-        r"\bassembly\b",
-        r"lead times",
-        r"capacity constraints",
-        r"supply constraints",
-    ],
-    "china_exposure": [
-        r"\bchina\b",
-        r"\bchinese\b",
-        r"\bbeijing\b",
-        r"\btaiwan\b",
-        r"\btaiwanese\b",
-        r"taiwan strait",
-        r"export controls",
-        r"semiconductor restrictions",
-    ],
-    "regulation_antitrust": [
-        r"\bregulation\b",
-        r"\bregulatory\b",
-        r"\bantitrust\b",
-        r"\binvestigation\b",
-        r"\bcompliance\b",
-        r"competition authority",
-        r"government review",
-        r"state aid",
-    ],
-    "macro_demand": [
-        r"\bslump\b",
-        r"\bslowdown\b",
-        r"\brecession\b",
-        r"\binflation\b",
-        r"interest rates",
-        r"consumer demand",
-        r"pricing pressure",
-        r"\bmargins\b",
-        r"industrial demand",
-        r"cyclical demand",
-    ],
-    "middle_east_energy_shipping": [
-        r"\biran\b",
-        r"\bisrael\b",
-        r"\bgaza\b",
-        r"\bhamas\b",
-        r"\bhezbollah\b",
-        r"middle east",
-        r"persian gulf",
-        r"strait of hormuz",
-        r"red sea",
-        r"\bhouthi\b",
-        r"\byemen\b",
-        r"oil prices",
-        r"energy prices",
-        r"\blng\b",
-        r"crude oil",
-        r"\btanker\b",
-        r"shipping route",
-        r"shipping disruption",
-    ],
-}
-
-GEOPOLITICAL_WEIGHTS = {
-    "tariffs_trade": 1.4,
-    "sanctions_export_controls": 1.5,
-    "war_conflict": 1.3,
-    "supply_chain_disruption": 1.4,
-    "china_exposure": 1.5,
-    "regulation_antitrust": 1.3,
-    "macro_demand": 1.1,
-    "middle_east_energy_shipping": 1.5,
-}
-
-# Patterns used to measure the COMPANY'S OWN EXPOSURE in its filing text.
-# Same category keys as the event map so the two signals can be overlapped.
-EXPOSURE_KEYWORDS = {
-    "tariffs_trade": [
-        r"\btariffs\b",
-        r"trade restrictions",
-        r"international operations",
-        r"regional economic conditions",
-        r"customs duties",
-        r"cross-border",
-    ],
-    "sanctions_export_controls": [
-        r"\bsanctions\b",
-        r"export controls",
-        r"trade restrictions",
-        r"licensing restrictions",
-        r"export license",
-        r"restricted jurisdictions",
-    ],
-    "war_conflict": [
-        r"\bgeopolitical\b",
-        r"\bwar\b",
-        r"international operations",
-        r"armed conflict",
-        r"military conflict",
-        r"geopolitical tensions",
-    ],
-    "supply_chain_disruption": [
-        r"supply chain",
-        r"\bsupplier\b",
-        r"\bsuppliers\b",
-        r"\bmanufacturing\b",
-        r"\bassembly\b",
-        r"\blogistics\b",
-        r"\bcomponent\b",
-        r"\bsemiconductor\b",
-        r"\bproduction\b",
-        r"lead times",
-        r"capacity constraints",
-    ],
-    "china_exposure": [
-        r"\bchina\b",
-        r"\bchinese\b",
-        r"\btaiwan\b",
-        r"\basia\b",
-        r"international operations",
-        r"sales outside the u.s.",
-        r"supplier facilities",
-        r"manufacturing and assembly sites",
-        r"taiwan strait",
-    ],
-    "regulation_antitrust": [
-        r"\bregulation\b",
-        r"\bregulatory\b",
-        r"\bcompliance\b",
-        r"\bgovernment\b",
-        r"\bantitrust\b",
-        r"export controls",
-        r"competition authority",
-        r"licensing restrictions",
-    ],
-    "macro_demand": [
-        r"\binflation\b",
-        r"interest rates",
-        r"consumer confidence",
-        r"\bspending\b",
-        r"economic conditions",
-        r"\brecession\b",
-        r"\bcyclical\b",
-        r"\bdemand\b",
-        r"pricing pressure",
-        r"foreign exchange",
-    ],
-    "middle_east_energy_shipping": [
-        r"oil prices",
-        r"energy prices",
-        r"\bshipping\b",
-        r"\blogistics\b",
-        r"supply chain",
-        r"international operations",
-        r"regional economic conditions",
-        r"\binflation\b",
-        r"currency fluctuations",
-    ],
-}
+# Event/exposure keyword patterns and category weights load from keywords.toml
+# (via _keyword_config) so they can be tuned/generalized without code changes.
+# The two keyword maps stay separate on purpose (news vs filing language);
+# module-level names are unchanged, so the fusion logic below is intact.
+_CFG = scorer_config("geopolitics")
+GEOPOLITICAL_EVENT_KEYWORDS: dict[str, list[str]] = _CFG["keywords"]
+GEOPOLITICAL_WEIGHTS: dict[str, float] = _CFG["weights"]
+EXPOSURE_KEYWORDS: dict[str, list[str]] = _CFG["exposure_keywords"]
 
 
 def normalize_text(text: str) -> str:

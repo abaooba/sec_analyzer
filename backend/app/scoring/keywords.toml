@@ -71,3 +71,33 @@ scalability = ['\bplatform\b', '\bsoftware\b', '\bdigital\b', '\becosystem\b', '
 ecosystem_strength = ['\becosystem\b', '\bintegrated\b', 'installed base', '\bcompatibility\b', 'customer loyalty', '\bbrand\b', 'customer collaboration', 'application support', 'supplier network', 'service network', '\bworkflow\b', '\bqualification\b']
 operational_intensity = ['\bmanufacturing\b', '\bassembly\b', '\bsupplier\b', '\bsuppliers\b', '\blogistics\b', '\binventory\b', '\bcomponent\b', '\bdistribution\b', 'capital intensive', '\bfacility\b', '\bfacilities\b', 'production capacity', 'service organization']
 customer_dependency = ['depend on', 'depend significantly', 'single source', '\bconcentration\b', '\bchannel\b', '\breseller\b', 'third-party', 'limited number of customers', '\bkey customer\b', '\btop customer\b', 'customer concentration', 'supplier concentration', 'sole supplier']
+
+[geopolitics.weights]
+tariffs_trade = 1.4
+sanctions_export_controls = 1.5
+war_conflict = 1.3
+supply_chain_disruption = 1.4
+china_exposure = 1.5
+regulation_antitrust = 1.3
+macro_demand = 1.1
+middle_east_energy_shipping = 1.5
+
+[geopolitics.keywords]
+tariffs_trade = ['\btariff\b', '\btariffs\b', 'trade war', 'trade restrictions', 'trade tensions', 'import duties', 'export duties', 'customs duties', 'trade barrier']
+sanctions_export_controls = ['\bsanctions\b', 'export controls', '\bblacklist\b', 'entity list', 'restricted exports', 'licensing restrictions', 'license denial', 'export license', 'national security restrictions']
+war_conflict = ['\bwar\b', '\bconflict\b', '\bmilitary\b', '\binvasion\b', '\bmissile\b', '\bhostilities\b', '\battack\b', 'armed conflict', 'cross-strait']
+supply_chain_disruption = ['supply chain', '\bmanufacturing\b', '\bsupplier\b', '\bsuppliers\b', '\bshipping\b', '\blogistics\b', '\bdisruption\b', '\bfactory\b', '\bassembly\b', 'lead times', 'capacity constraints', 'supply constraints']
+china_exposure = ['\bchina\b', '\bchinese\b', '\bbeijing\b', '\btaiwan\b', '\btaiwanese\b', 'taiwan strait', 'export controls', 'semiconductor restrictions']
+regulation_antitrust = ['\bregulation\b', '\bregulatory\b', '\bantitrust\b', '\binvestigation\b', '\bcompliance\b', 'competition authority', 'government review', 'state aid']
+macro_demand = ['\bslump\b', '\bslowdown\b', '\brecession\b', '\binflation\b', 'interest rates', 'consumer demand', 'pricing pressure', '\bmargins\b', 'industrial demand', 'cyclical demand']
+middle_east_energy_shipping = ['\biran\b', '\bisrael\b', '\bgaza\b', '\bhamas\b', '\bhezbollah\b', 'middle east', 'persian gulf', 'strait of hormuz', 'red sea', '\bhouthi\b', '\byemen\b', 'oil prices', 'energy prices', '\blng\b', 'crude oil', '\btanker\b', 'shipping route', 'shipping disruption']
+
+[geopolitics.exposure_keywords]
+tariffs_trade = ['\btariffs\b', 'trade restrictions', 'international operations', 'regional economic conditions', 'customs duties', 'cross-border']
+sanctions_export_controls = ['\bsanctions\b', 'export controls', 'trade restrictions', 'licensing restrictions', 'export license', 'restricted jurisdictions']
+war_conflict = ['\bgeopolitical\b', '\bwar\b', 'international operations', 'armed conflict', 'military conflict', 'geopolitical tensions']
+supply_chain_disruption = ['supply chain', '\bsupplier\b', '\bsuppliers\b', '\bmanufacturing\b', '\bassembly\b', '\blogistics\b', '\bcomponent\b', '\bsemiconductor\b', '\bproduction\b', 'lead times', 'capacity constraints']
+china_exposure = ['\bchina\b', '\bchinese\b', '\btaiwan\b', '\basia\b', 'international operations', 'sales outside the u.s.', 'supplier facilities', 'manufacturing and assembly sites', 'taiwan strait']
+regulation_antitrust = ['\bregulation\b', '\bregulatory\b', '\bcompliance\b', '\bgovernment\b', '\bantitrust\b', 'export controls', 'competition authority', 'licensing restrictions']
+macro_demand = ['\binflation\b', 'interest rates', 'consumer confidence', '\bspending\b', 'economic conditions', '\brecession\b', '\bcyclical\b', '\bdemand\b', 'pricing pressure', 'foreign exchange']
+middle_east_energy_shipping = ['oil prices', 'energy prices', '\bshipping\b', '\blogistics\b', 'supply chain', 'international operations', 'regional economic conditions', '\binflation\b', 'currency fluctuations']
