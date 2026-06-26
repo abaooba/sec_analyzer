@@ -1,0 +1,103 @@
+{
+  "cik": "0000320193",
+  "company_name": "Apple Inc.",
+  "ticker": "AAPL",
+  "overall_score": 72,
+  "confidence": {
+    "score": 80,
+    "level": "high",
+    "factors": {
+      "risk_factors_text": true,
+      "business_text": true,
+      "mdna_text": true,
+      "financial_metrics_present": 5,
+      "year_over_year_data": true,
+      "news_articles_analyzed": 12
+    }
+  },
+  "forensic": {
+    "total_forensic_score": 6.0,
+    "flags": ["impairment", "related_party"],
+    "category_scores": {
+      "going_concern": 0,
+      "restatement": 0,
+      "material_weakness": 0,
+      "impairment": 4.0,
+      "related_party": 2.0,
+      "liquidity_covenant": 0,
+      "sec_investigation": 0,
+      "auditor_change": 0
+    },
+    "matched_keywords": {
+      "impairment": { "impairment": 3, "write-down": 1 },
+      "related_party": { "related party": 1 }
+    },
+    "evidence_sentences": {
+      "impairment": [
+        "We recorded an impairment charge of $1.2 billion related to certain long-lived assets during the fiscal year.",
+        "Goodwill is tested for impairment annually and whenever events indicate the carrying amount may not be recoverable."
+      ],
+      "related_party": [
+        "Transactions with related parties were conducted in the ordinary course of business and on arm's-length terms."
+      ]
+    }
+  },
+  "score_trajectory": {
+    "points": [
+      { "filing_date": "2021-10-29", "form": "10-K", "risk": 38, "business_model": 52, "moat": 28 },
+      { "filing_date": "2022-10-28", "form": "10-K", "risk": 41, "business_model": 55, "moat": 31 },
+      { "filing_date": "2023-11-03", "form": "10-K", "risk": 45, "business_model": 60, "moat": 35 }
+    ],
+    "filings_compared": 3,
+    "trends": {
+      "risk": { "change": 4, "direction": "up" },
+      "business_model": { "change": 5, "direction": "up" },
+      "moat": { "change": 4, "direction": "up" }
+    }
+  },
+  "contradictions": [
+    "High overall score (72) despite 2 forensic red flag(s) (impairment, related_party) — the flags are outside the blend; weigh them separately.",
+    "Year-over-year, business-model language improved while risk language also rose — a mixed trajectory, not a clean improvement."
+  ],
+  "scores": {
+    "financial": 68,
+    "risk": 45,
+    "business_model": 60,
+    "moat": 35,
+    "geopolitical": 50
+  },
+  "summary": "Apple Inc. shows solid financial quality and a moderate competitive moat, tempered by rising risk-factor language year over year.",
+  "strengths": [
+    "Strong and consistent financial metrics loaded from XBRL.",
+    "Business-model disclosure language strengthened versus the prior year."
+  ],
+  "weaknesses": [
+    "Risk-factor language expanded notably year over year.",
+    "Moat signals remain only moderate relative to peers."
+  ],
+  "recent_changes": [
+    "Risk Factors section grew by ~8,400 characters versus last year.",
+    "New disclosure language appeared around supply-chain concentration."
+  ],
+  "details": {
+    "financial": { "total_financial_score": 68, "metrics_used": {} },
+    "risk": { "total_risk_score": 45, "evidence_sentences": {} },
+    "business_model": { "total_business_model_score": 60 },
+    "moat": { "total_moat_score": 35 },
+    "geopolitics": { "total_geopolitical_score": 50, "article_count": 12 },
+    "change_detection": { "score_changes": {} }
+  },
+  "financial_snapshot": {
+    "Revenue": "$383.3B",
+    "Net Income": "$97.0B",
+    "Total Assets": "$352.6B"
+  },
+  "llm_analysis": {
+    "enhanced_summary": "...",
+    "investment_thesis": "...",
+    "key_risks": ["..."],
+    "key_strengths": ["..."],
+    "score_commentary": "...",
+    "red_flags": ["..."]
+  }
+}
