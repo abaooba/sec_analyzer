@@ -24,6 +24,7 @@ backend/sec_analyzer.db
 # Cached / downloaded data
 backend/data/raw_filings/
 backend/data/processed/
+backend/data/factor_cache/
 
 # Personal/local notes (never committed)
 *.local.md

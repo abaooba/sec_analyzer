@@ -3,6 +3,38 @@
 Notable changes to **sec_analyzer**. The design keeps the AI *last* — every score is
 explainable; the LLM only narrates on top of the numbers.
 
+## [Unreleased] — 2026-06-29
+
+### Factor exposure & performance attribution (new endpoint)
+
+A new analytical dimension, separate from the SEC-filing pipeline: decompose a
+portfolio (or a single stock/ETF) against the **Fama-French 5-factor + Momentum**
+model. Additive — `/analyze` and its response are untouched.
+
+- **New `POST /factor-attribution` endpoint.** Body is `{holdings:[{ticker,weight}]}`
+  or a single `{ticker}`, plus optional `start_date` / `end_date` / `rolling_window`.
+  Returns static factor betas + alpha (with std err / t / p / 95% CI / significance),
+  rolling betas (statsmodels `RollingOLS`), and a **return-attribution waterfall**
+  whose per-factor slices + alpha reconcile exactly to the total excess return.
+- **New `backend/app/factors/` package** — `factor_data` (Ken French FF5 + Momentum
+  CSVs, fetched through the shared `make_http_client` and disk-cached),
+  `prices` (yfinance → returns → weighted portfolio), `regression` (one shared OLS
+  fit feeding the summary and the waterfall), `attribution`, and `service` (the
+  orchestrator; injectable price/factor loaders keep it fully offline-testable).
+- **Data sources:** Ken French Data Library (factors, no key) + yfinance (prices,
+  no key). The factor zips are cached under `FACTOR_CACHE_DIR` (`FACTOR_CACHE_TTL_HOURS`
+  default 24h). The heavy quant stack (statsmodels / pandas / yfinance) is imported
+  **lazily** at the endpoint, so app startup and the `/analyze` path are unaffected.
+- **Config:** `FACTOR_DATA_BASE_URL`, `FACTOR_CACHE_DIR`, `FACTOR_CACHE_TTL_HOURS`.
+- **Dependencies added** (runtime): numpy, pandas, scipy, statsmodels, yfinance
+  (+ their transitive deps), pinned in `requirements.txt`.
+- **Tests:** 40 new fully-offline tests (data parse/cache, returns/portfolio math,
+  regression recovery, waterfall reconciliation, the orchestrator, and the endpoint
+  wiring) — synthetic returns with known alpha/betas verify the estimates.
+- **Docs:** `docs/factor-attribution.md` (frontend handoff), `…types.ts`, and a
+  generated `…sample.json`; README + this changelog updated. (Streamlit/gradio
+  dashboard intentionally omitted — the frontend lives in a separate repo.)
+
 ## [Unreleased] — 2026-06-25
 
 A foundation-and-features pass (backlog tiers T0–T4). All changes are local; nothing

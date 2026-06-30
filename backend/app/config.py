@@ -138,6 +138,26 @@ class Settings(BaseModel):
         default_factory=lambda: _parse_csv_env(os.getenv("CORS_ALLOW_ORIGINS", "*"))
     )
 
+    # --- Factor-attribution feature (Fama-French exposure analysis) ---
+    # Base URL of the Ken French Data Library, which publishes the daily
+    # Fama-French factor returns as free CSV zips. The factor module fetches them
+    # from here through the shared make_http_client, so TLS_VERIFY governs these
+    # requests like every other outbound call.
+    factor_data_base_url: str = Field(
+        default=os.getenv(
+            "FACTOR_DATA_BASE_URL",
+            "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/",
+        )
+    )
+    # Where the downloaded Ken French factor zips are cached on disk. The factors
+    # change at most once a day, so caching avoids re-downloading several MB on
+    # every request. Mirrors how raw_filings_dir is resolved.
+    factor_cache_dir: str = Field(
+        default=str(resolve_storage_path(os.getenv("FACTOR_CACHE_DIR", "data/factor_cache")))
+    )
+    # How long (hours) a cached factor zip is treated as fresh before re-fetching.
+    factor_cache_ttl_hours: float = Field(default=float(os.getenv("FACTOR_CACHE_TTL_HOURS", "24")))
+
 
 # The single shared settings instance imported everywhere else in the app.
 settings = Settings()

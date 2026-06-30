@@ -216,7 +216,12 @@ Everything here is **free and public** — no paid data vendor.
 | `backend/app/change_detection.py` | Year-over-year filing comparison + multi-year score trajectory |
 | `backend/app/opinion.py` | **Orchestrator** — runs everything, blends the final score, and adds the confidence / forensic / trajectory / contradictions blocks |
 | `backend/app/llm_analysis.py` | LLM narrative layer (Groq / Llama 3.3 70B) |
-| `backend/api.py` | FastAPI `/analyze` endpoint |
+| `backend/app/factors/factor_data.py` | Ken French FF5 + Momentum daily CSVs — fetch (via `make_http_client`) + parse (percent→decimal) + disk-cache |
+| `backend/app/factors/prices.py` | yfinance adjusted prices → daily returns → weighted portfolio series (yfinance imported lazily) |
+| `backend/app/factors/regression.py` | OLS factor regressions — one shared fit (`fit_factor_model`) feeding the full-sample summary + the rolling (`RollingOLS`) betas |
+| `backend/app/factors/attribution.py` | Return-attribution waterfall — per-factor `beta×factor-return` + alpha, reconciles to the total |
+| `backend/app/factors/service.py` | **Factor orchestrator** — `analyze_factor_exposure`; injectable price/factor loaders for offline tests |
+| `backend/api.py` | FastAPI `/analyze` + `/factor-attribution` endpoints |
 | `backend/main.py` | Interactive CLI with a formatted terminal report |
 
 ---
@@ -1063,6 +1068,52 @@ local (nothing pushed).
 2. Optionally tighten the CORS default + decide on the async rewrite (attended).
 3. Pick the next T5 feature direction — most need a data source added first.
 
+### 2026-06-29 — FEATURE: Factor exposure & performance attribution (`/factor-attribution`)
+
+First feature of a *new analytical dimension* — price/return based, not SEC-filing
+based. Given a portfolio (or one ticker), regress its **excess** returns on the
+Fama-French 5 + Momentum factors and report static betas + alpha, rolling betas, and
+a return-attribution waterfall ("is this alpha, or just factor beta?"). Implemented
+from a pasted spec; the Streamlit/gradio dashboard in that spec was intentionally
+skipped — the frontend is a separate repo, so the deliverable is the JSON contract +
+a handoff doc, mirroring the T4 `/analyze` pattern.
+
+**What I built:** a `backend/app/factors/` package — `factor_data` (Ken French CSVs),
+`prices` (yfinance → portfolio returns), `regression` (OLS + `RollingOLS`),
+`attribution` (the waterfall), `service` (orchestrator) — plus a new
+`POST /factor-attribution` endpoint, 40 offline tests, and `docs/factor-attribution.*`.
+
+**Decisions & gotchas worth remembering:**
+- **Separate endpoint, not bolted onto `/analyze`.** `/analyze` is keyed by company/CIK
+  (filings); this is keyed by tickers + weights + dates (returns). Different inputs,
+  different cadence → its own endpoint keeps both additive and clean.
+- **Kept the repo's HTTP centralization.** Fetched the Ken French zips through
+  `make_http_client` (so `TLS_VERIFY` governs them) instead of `pandas_datareader`,
+  which would bring its own HTTP stack. Parsing the FF CSVs by hand (preamble lines,
+  percent→decimal, `-99.99` sentinels→NaN, copyright footer) is a few lines and fully
+  offline-testable with a fixture.
+- **The attribution identity is exact** — for an OLS fit *with an intercept*,
+  `mean(y) = alpha + Σ beta_i·mean(x_i)` (residuals sum to zero), so the waterfall
+  reconciles to the total. First cut left a ~1.2e-4 residual because I annualized a
+  *display-rounded* daily alpha (×252 amplifies 6-dp rounding). Fix: a single shared
+  `FactorFit` (one OLS fit) feeds both the summary and the waterfall at full precision
+  → residual ≈ 0, and the two alphas match by construction.
+- **Lazy imports protect the core app.** yfinance is imported inside the price
+  downloader, and the whole service is imported *inside* the endpoint — so app startup
+  and the `/analyze` path never load statsmodels/pandas/yfinance. Only this endpoint
+  pays the cold-start.
+- **Offline tests via injectable loaders + manufactured truth.** `service` takes
+  `price_loader`/`factor_loader`; tests synthesize returns as `alpha + Xβ + noise` and
+  assert the regression recovers α and β. No network, no monkeypatching internals.
+- **pandas 3.0** got pulled (major version). Its `pct_change` no longer forward-fills by
+  default — which is exactly what we want (a real price gap stays NaN). Watched for that.
+- **Dependency weight:** this added numpy / pandas / scipy / statsmodels / yfinance to a
+  repo that was previously httpx-only. A real increase, but inherent to the feature;
+  pinned in `requirements.txt`, `pip check` clean, CI installs them.
+
+Gate green: **pytest 141 → 181 (+40)**, ruff over all of `backend`, mypy over
+`backend/app` + entry points. Local only — nothing pushed (push = Render deploy).
+
 ### Backlog status (mirror of the /timebox brief — keep in sync)
 - **T0 SECURITY** — ✅ **complete**. Code remediation ✅ (untrack `.env`, fix
   `.gitignore`, add `.env.example`); `.env.example` re-tracked ✅ (`f9bb8f7`) after
@@ -1092,7 +1143,10 @@ local (nothing pushed).
   `3062ac0` + CLI `ad543d1`). Test-debt + docs + CHANGELOG done. Only backtesting
   remains → **parked** (needs external price/outcome data). (T3 async rewrite
   deferred-by-judgment — invasive, attended only.)
-- **T5 REACH FEATURES** — ⬜ **parked** — insider/institutional, peer-relative, RAG
-  Q&A, frontend, watchlist/alerts, PDF export. Most need new external data sources or
-  are large scope → an attended / user-directed effort, not autonomous-loop work.
-  (The contradiction detector originally listed here shipped under T4.)
+- **T5 REACH FEATURES** — 🟦 **first one shipped**: **factor exposure & attribution**
+  (`/factor-attribution`, 2026-06-29) — Fama-French 5 + Momentum betas/alpha + rolling +
+  attribution waterfall; added a price source (yfinance) + factor source (Ken French).
+  Still ⬜ **parked**: insider/institutional, peer-relative, RAG Q&A, frontend,
+  watchlist/alerts, PDF export — most need new external data sources or are large scope
+  → an attended / user-directed effort. (The contradiction detector originally listed
+  here shipped under T4.)

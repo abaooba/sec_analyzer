@@ -109,6 +109,26 @@ four signature signals above (`confidence`, `forensic`, `score_trajectory`,
 
 The database (SQLite) and the filing cache are created automatically on first run.
 
+### Factor exposure & attribution
+
+A second, standalone endpoint answers a different question — *is a return alpha,
+or just factor beta?* It decomposes a portfolio (or single stock/ETF) against the
+**Fama-French 5-factor + Momentum** model: static + rolling factor betas, alpha
+(with significance), and a return-attribution waterfall.
+
+```bash
+curl -X POST localhost:8000/factor-attribution \
+  -H 'content-type: application/json' \
+  -d '{"holdings": [{"ticker": "AAPL", "weight": 0.6}, {"ticker": "MSFT", "weight": 0.4}]}'
+# or a single name:  -d '{"ticker": "SPY"}'
+```
+
+Prices come from yfinance and the factors from the Ken French Data Library (no
+keys). The response shape, a sample payload, and a frontend handoff guide live in
+[`docs/factor-attribution.md`](./docs/factor-attribution.md). The heavy quant
+stack (statsmodels / pandas / yfinance) is imported lazily, so it only loads when
+this endpoint is hit — `/analyze` and app startup are unaffected.
+
 ---
 
 ## Tests
@@ -133,6 +153,8 @@ in-memory — so it needs no network and no secrets. CI runs it on every push.
 | SEC `Archives` | the raw filing HTML |
 | Google News RSS | live headlines (no API key) |
 | Groq (Llama 3.3 70B) | the *optional* narrative layer |
+| Ken French Data Library | daily Fama-French 5 + Momentum factor returns (factor attribution) |
+| yfinance | daily adjusted prices for the factor-attribution portfolio |
 
 ---
 
@@ -150,8 +172,11 @@ source. If a key is ever exposed, rotate it provider-side.
 backend/app/        config, db/models, SEC/news clients, ingest, parsing,
                     scoring/ (the five scorers), opinion.py (orchestrator),
                     llm_analysis.py (the AI-last layer)
-backend/api.py      FastAPI /analyze endpoint
+backend/app/factors/  factor exposure & attribution (Fama-French regressions):
+                    factor_data, prices, regression, attribution, service
+backend/api.py      FastAPI /analyze + /factor-attribution endpoints
 backend/main.py     interactive CLI
 backend/tests/      pytest suite (offline, in-memory DB)
+docs/               frontend handoff contracts (/analyze + /factor-attribution)
 LEARNINGS.md        deep reference + iteration log
 ```

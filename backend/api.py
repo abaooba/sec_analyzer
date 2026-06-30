@@ -36,6 +36,27 @@ class AnalyzeRequest(BaseModel):
     company_name: str
     ticker: str | None = None
 
+
+class Holding(BaseModel):
+    """One position in a portfolio: a ticker and its weight (default 1.0)."""
+    ticker: str
+    weight: float = 1.0
+
+
+class FactorAttributionRequest(BaseModel):
+    """Request body for /factor-attribution.
+
+    Supply either a list of `holdings` (a portfolio) or a single `ticker` (a
+    stock/ETF, treated as a 100% position). `start_date` / `end_date` are ISO
+    dates (default: the last few years); `rolling_window` is the rolling-beta
+    window in trading days.
+    """
+    holdings: list[Holding] | None = None
+    ticker: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    rolling_window: int = 126
+
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
     """Resolve the company, run the full pipeline, and return the opinion JSON."""
@@ -56,3 +77,29 @@ def analyze(req: AnalyzeRequest):
     finally:
         # Always clear the on-disk HTML cache, even if analysis raised.
         delete_local_filings_for_company(cik)
+
+
+@app.post("/factor-attribution")
+def factor_attribution(req: FactorAttributionRequest):
+    """Decompose a portfolio's (or single ticker's) returns against the
+    Fama-French 5 + Momentum model: static + rolling factor betas, alpha, and a
+    return-attribution waterfall.
+
+    Imported lazily so the heavy quant stack (statsmodels / pandas / yfinance)
+    stays off app startup and off the /analyze path — it loads only when this
+    endpoint is actually hit.
+    """
+    from backend.app.factors.service import analyze_factor_exposure
+
+    holdings = [holding.model_dump() for holding in (req.holdings or [])]
+    if not holdings and req.ticker:
+        holdings = [{"ticker": req.ticker, "weight": 1.0}]
+    if not holdings:
+        return {"error": "Provide either 'holdings' or a single 'ticker'."}
+
+    return analyze_factor_exposure(
+        holdings,
+        start_date=req.start_date,
+        end_date=req.end_date,
+        rolling_window=req.rolling_window,
+    )
