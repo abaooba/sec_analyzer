@@ -134,6 +134,7 @@ def compute_basic_snapshot(cik: str) -> dict:
         cik,
         [
             "PaymentsToAcquirePropertyPlantAndEquipment",
+            "PaymentsToAcquireProductiveAssets",
             "PurchaseOfPropertyPlantAndEquipment",
             "PropertyPlantAndEquipmentAdditions",
         ],

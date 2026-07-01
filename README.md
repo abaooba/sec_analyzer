@@ -129,6 +129,33 @@ keys). The response shape, a sample payload, and a frontend handoff guide live i
 stack (statsmodels / pandas / yfinance) is imported lazily, so it only loads when
 this endpoint is hit — `/analyze` and app startup are unaffected.
 
+### Cross-sectional fundamental screen
+
+A third, standalone endpoint ranks a **universe of tickers** against each other on
+five classic quant metrics — **Piotroski F-Score** (9 binary tests), **Altman
+Z-Score**, **Sloan accruals**, **ROIC**, and **FCF yield** — then flags financial
+**distress** (low Z) and **earnings-quality risk** (high accruals) and returns a
+ranked, color-coded table plus a **value-vs-quality** scatter.
+
+```bash
+curl -X POST localhost:8000/screen \
+  -H 'content-type: application/json' \
+  -d '{"tickers": ["AAPL", "MSFT", "NVDA", "GOOGL", "KO", "F"]}'
+```
+
+Or from the terminal (color table + ASCII scatter, and a PNG when `matplotlib` is
+installed):
+
+```bash
+python -m backend.screen AAPL MSFT NVDA GOOGL KO F
+```
+
+Metrics are computed from the same SEC XBRL facts, over a clean year-over-year
+annual history (keyed by period-end, restatement-aware). The Altman model adapts to
+the data — classic (with a market cap from yfinance) or book-value Z″ without one.
+The response shape, a sample payload, and a frontend handoff guide live in
+[`docs/screen.md`](./docs/screen.md).
+
 ---
 
 ## Tests
@@ -174,9 +201,12 @@ backend/app/        config, db/models, SEC/news clients, ingest, parsing,
                     llm_analysis.py (the AI-last layer)
 backend/app/factors/  factor exposure & attribution (Fama-French regressions):
                     factor_data, prices, regression, attribution, service
-backend/api.py      FastAPI /analyze + /factor-attribution endpoints
-backend/main.py     interactive CLI
+backend/app/screening/  cross-sectional screen (Piotroski / Altman / accruals /
+                    ROIC / FCF yield): metrics, ranking, render, market_data, service
+backend/app/fundamentals_history.py  clean year-over-year annual XBRL snapshots
+backend/api.py      FastAPI /analyze + /factor-attribution + /screen endpoints
+backend/main.py     interactive CLI    ·    backend/screen.py  screen CLI
 backend/tests/      pytest suite (offline, in-memory DB)
-docs/               frontend handoff contracts (/analyze + /factor-attribution)
+docs/               frontend handoff contracts (/analyze + /factor-attribution + /screen)
 LEARNINGS.md        deep reference + iteration log
 ```

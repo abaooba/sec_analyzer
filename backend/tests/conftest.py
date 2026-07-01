@@ -52,6 +52,13 @@ def patch_parse_filings_db(monkeypatch, in_memory_sessionmaker):
 
 
 @pytest.fixture
+def patch_fundamentals_history_db(monkeypatch, in_memory_sessionmaker):
+    """Repoint `fundamentals_history.SessionLocal` at the isolated in-memory DB."""
+    monkeypatch.setattr("backend.app.fundamentals_history.SessionLocal", in_memory_sessionmaker)
+    return in_memory_sessionmaker
+
+
+@pytest.fixture
 def sample_10k_html():
     """Raw HTML of the synthetic 10-K fixture (TOC + Business/Risk/MD&A)."""
     return (FIXTURES_DIR / "sample_10k.html").read_text(encoding="utf-8")

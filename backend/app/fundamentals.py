@@ -32,11 +32,27 @@ TARGET_TAGS = {
         "StockholdersEquity",
         "NetCashProvidedByUsedInOperatingActivities",
         "PaymentsToAcquirePropertyPlantAndEquipment",
+        # A common alternate capex concept — several large filers (e.g. NVIDIA,
+        # Ford) tag "purchases of property/productive assets" here instead.
+        "PaymentsToAcquireProductiveAssets",
         "LongTermDebtNoncurrent",
         "InterestExpenseAndOther",
         "GrossProfit",
         "OperatingIncomeLoss",
         "WeightedAverageNumberOfDilutedSharesOutstanding",
+        # --- Added for the cross-sectional screen (Piotroski / Altman Z /
+        # accruals / ROIC). Current assets & liabilities give working capital and
+        # the current ratio; retained earnings feed Altman X2; cost of revenue is
+        # a gross-margin fallback; income-tax + pre-tax income give the effective
+        # tax rate used to turn EBIT into NOPAT for ROIC.
+        "AssetsCurrent",
+        "LiabilitiesCurrent",
+        "RetainedEarningsAccumulatedDeficit",
+        "CostOfRevenue",
+        "CostOfGoodsAndServicesSold",
+        "IncomeTaxExpenseBenefit",
+        "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+        "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments",
     },
     "ifrs-full": {
         "Revenue",
@@ -55,6 +71,13 @@ TARGET_TAGS = {
         "OperatingProfitLoss",
         "WeightedAverageNumberOfSharesOutstandingDiluted",
         "WeightedAverageNumberOfOrdinarySharesOutstandingDiluted",
+        # --- Added for the cross-sectional screen (IFRS spellings of the above) ---
+        "CurrentAssets",
+        "CurrentLiabilities",
+        "RetainedEarnings",
+        "CostOfSales",
+        "IncomeTaxExpenseContinuingOperations",
+        "ProfitLossBeforeTax",
     },
 }
 

@@ -1,0 +1,431 @@
+{
+  "universe": [
+    "AAPL",
+    "NVDA",
+    "KO",
+    "F"
+  ],
+  "universe_size": 4,
+  "screened": 4,
+  "unresolved": [],
+  "no_data": [],
+  "truncated": [],
+  "flag_counts": {
+    "distress": 1,
+    "earnings_quality_risk": 1
+  },
+  "medians": {
+    "value_score": 50.0,
+    "quality_score": 41.6
+  },
+  "rows": [
+    {
+      "ticker": "AAPL",
+      "name": "Apple Inc.",
+      "cik": "0000320193",
+      "period_end": "2025-09-27",
+      "prior_period_end": "2024-09-28",
+      "market_cap": 4325279268864.0,
+      "f_score": 8,
+      "f_score_available": 9,
+      "altman_z": 11.356,
+      "altman_model": "classic",
+      "distress_zone": "safe",
+      "accruals": 0.0014581184472695489,
+      "roic": 0.7383937491697593,
+      "fcf_yield": 0.022834826114231547,
+      "earnings_yield": 0.025896593731257158,
+      "detail": {
+        "piotroski": {
+          "f_score": 8,
+          "tests": {
+            "roa_positive": true,
+            "cfo_positive": true,
+            "roa_improving": true,
+            "accrual_quality": false,
+            "leverage_decreasing": true,
+            "current_ratio_increasing": true,
+            "no_new_shares": true,
+            "gross_margin_increasing": true,
+            "asset_turnover_increasing": true
+          },
+          "tests_available": 9,
+          "complete": true
+        },
+        "altman": {
+          "z_score": 11.356,
+          "model": "classic",
+          "zone": "safe",
+          "components": {
+            "x1": -0.04919817058743295,
+            "x2": -0.03970593556971504,
+            "x3": 0.37036418448896424,
+            "x4": 15.149415318884234,
+            "x5": 1.1584451663368045
+          }
+        },
+        "roic": {
+          "roic": 0.7383937491697593,
+          "nopat": 112280891892.50276,
+          "invested_capital": 152061000000.0,
+          "tax_rate": 0.15610002335586043
+        },
+        "fcf": 98767000000.0,
+        "current": {
+          "period_end": "2025-09-27",
+          "revenue": 416161000000.0,
+          "net_income": 112010000000.0,
+          "assets": 359241000000.0,
+          "equity": 73733000000.0,
+          "operating_cash_flow": 111482000000.0,
+          "capex": 12715000000.0
+        },
+        "prior": {
+          "period_end": "2024-09-28",
+          "revenue": 391035000000.0,
+          "net_income": 93736000000.0,
+          "assets": 364980000000.0,
+          "equity": 56950000000.0,
+          "operating_cash_flow": 118254000000.0,
+          "capex": 9447000000.0
+        }
+      },
+      "percentiles": {
+        "f_score": 100.0,
+        "roic": 100.0,
+        "accruals": 0.0,
+        "fcf_yield": 66.7,
+        "altman_z": 66.7
+      },
+      "quality_score": 100.0,
+      "value_score": 66.7,
+      "composite_score": 83.3,
+      "flags": [],
+      "rank": 1,
+      "colors": {
+        "f_score": "green",
+        "altman_z": "green",
+        "accruals": "green",
+        "roic": "green",
+        "fcf_yield": "amber"
+      }
+    },
+    {
+      "ticker": "F",
+      "name": "FORD MOTOR CO",
+      "cik": "0000037996",
+      "period_end": "2025-12-31",
+      "prior_period_end": "2024-12-31",
+      "market_cap": 54950903808.0,
+      "f_score": 2,
+      "f_score_available": 5,
+      "altman_z": 0.818,
+      "altman_model": "classic",
+      "distress_zone": "distress",
+      "accruals": null,
+      "roic": -0.2014772474410325,
+      "fcf_yield": 0.22687524928725555,
+      "earnings_yield": null,
+      "detail": {
+        "piotroski": {
+          "f_score": 2,
+          "tests": {
+            "roa_positive": null,
+            "cfo_positive": true,
+            "roa_improving": null,
+            "accrual_quality": null,
+            "leverage_decreasing": null,
+            "current_ratio_increasing": false,
+            "no_new_shares": true,
+            "gross_margin_increasing": false,
+            "asset_turnover_increasing": false
+          },
+          "tests_available": 5,
+          "complete": false
+        },
+        "altman": {
+          "z_score": 0.818,
+          "model": "classic",
+          "zone": "distress",
+          "components": {
+            "x1": 0.029730944805643936,
+            "x2": 0.07783925854198367,
+            "x3": -0.031709088393968736,
+            "x4": 0.21704283042894384,
+            "x5": 0.6476241527182183
+          }
+        },
+        "roic": {
+          "roic": -0.2014772474410325,
+          "nopat": -7243510000.0,
+          "invested_capital": 35952000000.0,
+          "tax_rate": 0.21
+        },
+        "fcf": 12467000000.0,
+        "current": {
+          "period_end": "2025-12-31",
+          "revenue": 187267000000.0,
+          "net_income": null,
+          "assets": 289160000000.0,
+          "equity": 35952000000.0,
+          "operating_cash_flow": 21282000000.0,
+          "capex": 8815000000.0
+        },
+        "prior": {
+          "period_end": "2024-12-31",
+          "revenue": 184992000000.0,
+          "net_income": 5879000000.0,
+          "assets": 285196000000.0,
+          "equity": 44835000000.0,
+          "operating_cash_flow": 15423000000.0,
+          "capex": 8684000000.0
+        }
+      },
+      "percentiles": {
+        "f_score": 0.0,
+        "roic": 0.0,
+        "accruals": null,
+        "fcf_yield": 100.0,
+        "altman_z": 0.0
+      },
+      "quality_score": 0.0,
+      "value_score": 100.0,
+      "composite_score": 50.0,
+      "flags": [
+        "distress"
+      ],
+      "rank": 2,
+      "colors": {
+        "f_score": "red",
+        "altman_z": "red",
+        "accruals": "neutral",
+        "roic": "red",
+        "fcf_yield": "green"
+      }
+    },
+    {
+      "ticker": "NVDA",
+      "name": "NVIDIA CORP",
+      "cik": "0001045810",
+      "period_end": "2026-01-25",
+      "prior_period_end": "2025-01-26",
+      "market_cap": 4776381120512.0,
+      "f_score": 4,
+      "f_score_available": 9,
+      "altman_z": 62.546,
+      "altman_model": "classic",
+      "distress_zone": "safe",
+      "accruals": 0.10897476162359769,
+      "roic": 0.6717349509215707,
+      "fcf_yield": 0.020240428383076117,
+      "earnings_yield": 0.025137650654462333,
+      "detail": {
+        "piotroski": {
+          "f_score": 4,
+          "tests": {
+            "roa_positive": true,
+            "cfo_positive": true,
+            "roa_improving": false,
+            "accrual_quality": false,
+            "leverage_decreasing": true,
+            "current_ratio_increasing": false,
+            "no_new_shares": true,
+            "gross_margin_increasing": false,
+            "asset_turnover_increasing": false
+          },
+          "tests_available": 9,
+          "complete": true
+        },
+        "altman": {
+          "z_score": 62.546,
+          "model": "classic",
+          "zone": "safe",
+          "components": {
+            "x1": 0.45184064060966234,
+            "x2": 0.7106908507129974,
+            "x3": 0.6304889194063916,
+            "x4": 96.47305838238739,
+            "x5": 1.0441724733200195
+          }
+        },
+        "roic": {
+          "roic": 0.6717349509215707,
+          "nopat": 110676393983.73982,
+          "invested_capital": 164762000000.0,
+          "tax_rate": 0.1511700247437257
+        },
+        "fcf": 96676000000.0,
+        "current": {
+          "period_end": "2026-01-25",
+          "revenue": 215938000000.0,
+          "net_income": 120067000000.0,
+          "assets": 206803000000.0,
+          "equity": 157293000000.0,
+          "operating_cash_flow": 102718000000.0,
+          "capex": 6042000000.0
+        },
+        "prior": {
+          "period_end": "2025-01-26",
+          "revenue": 130497000000.0,
+          "net_income": 72880000000.0,
+          "assets": 111601000000.0,
+          "equity": 79327000000.0,
+          "operating_cash_flow": 64089000000.0,
+          "capex": 3236000000.0
+        }
+      },
+      "percentiles": {
+        "f_score": 33.3,
+        "roic": 66.7,
+        "accruals": 100.0,
+        "fcf_yield": 33.3,
+        "altman_z": 100.0
+      },
+      "quality_score": 33.3,
+      "value_score": 33.3,
+      "composite_score": 33.3,
+      "flags": [
+        "earnings_quality_risk"
+      ],
+      "rank": 3,
+      "colors": {
+        "f_score": "amber",
+        "altman_z": "green",
+        "accruals": "red",
+        "roic": "green",
+        "fcf_yield": "amber"
+      }
+    },
+    {
+      "ticker": "KO",
+      "name": "COCA COLA CO",
+      "cik": "0000021344",
+      "period_end": "2025-12-31",
+      "prior_period_end": "2024-12-31",
+      "market_cap": 350759878656.0,
+      "f_score": 6,
+      "f_score_available": 8,
+      "altman_z": 4.973,
+      "altman_model": "classic",
+      "distress_zone": "safe",
+      "accruals": 0.05550118082438585,
+      "roic": 0.35129704791388583,
+      "fcf_yield": 0.015098648170060337,
+      "earnings_yield": 0.03736744364897674,
+      "detail": {
+        "piotroski": {
+          "f_score": 6,
+          "tests": {
+            "roa_positive": true,
+            "cfo_positive": true,
+            "roa_improving": true,
+            "accrual_quality": false,
+            "leverage_decreasing": null,
+            "current_ratio_increasing": true,
+            "no_new_shares": true,
+            "gross_margin_increasing": true,
+            "asset_turnover_increasing": false
+          },
+          "tests_available": 8,
+          "complete": false
+        },
+        "altman": {
+          "z_score": 4.973,
+          "model": "classic",
+          "zone": "safe",
+          "components": {
+            "x1": 0.09314417646160891,
+            "x2": 0.7668867348496413,
+            "x3": 0.13129674858800183,
+            "x4": 4.828277542857929,
+            "x5": 0.45738246069302396
+          }
+        },
+        "roic": {
+          "roic": 0.35129704791388583,
+          "nopat": 11300874734.341793,
+          "invested_capital": 32169000000.0,
+          "tax_rate": 0.1788348543567946
+        },
+        "fcf": 5296000000.0,
+        "current": {
+          "period_end": "2025-12-31",
+          "revenue": 47941000000.0,
+          "net_income": 13107000000.0,
+          "assets": 104816000000.0,
+          "equity": 32169000000.0,
+          "operating_cash_flow": 7408000000.0,
+          "capex": 2112000000.0
+        },
+        "prior": {
+          "period_end": "2024-12-31",
+          "revenue": 47061000000.0,
+          "net_income": 10631000000.0,
+          "assets": 100549000000.0,
+          "equity": 24856000000.0,
+          "operating_cash_flow": 6805000000.0,
+          "capex": 2064000000.0
+        }
+      },
+      "percentiles": {
+        "f_score": 66.7,
+        "roic": 33.3,
+        "accruals": 50.0,
+        "fcf_yield": 0.0,
+        "altman_z": 33.3
+      },
+      "quality_score": 50.0,
+      "value_score": 0.0,
+      "composite_score": 25.0,
+      "flags": [],
+      "rank": 4,
+      "colors": {
+        "f_score": "amber",
+        "altman_z": "green",
+        "accruals": "amber",
+        "roic": "green",
+        "fcf_yield": "red"
+      }
+    }
+  ],
+  "scatter": {
+    "x_label": "Value (FCF-yield percentile)",
+    "y_label": "Quality (F-Score / ROIC / low accruals)",
+    "median_value": 50.0,
+    "median_quality": 41.6,
+    "points": [
+      {
+        "ticker": "AAPL",
+        "value": 66.7,
+        "quality": 100.0,
+        "color": "green",
+        "flags": []
+      },
+      {
+        "ticker": "F",
+        "value": 100.0,
+        "quality": 0.0,
+        "color": "red",
+        "flags": [
+          "distress"
+        ]
+      },
+      {
+        "ticker": "NVDA",
+        "value": 33.3,
+        "quality": 33.3,
+        "color": "amber",
+        "flags": [
+          "earnings_quality_risk"
+        ]
+      },
+      {
+        "ticker": "KO",
+        "value": 0.0,
+        "quality": 50.0,
+        "color": "green",
+        "flags": []
+      }
+    ]
+  }
+}

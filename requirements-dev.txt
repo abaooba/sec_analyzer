@@ -3,3 +3,7 @@
 pytest==9.1.1
 ruff==0.15.19
 mypy==2.1.0
+# Optional: renders the screen's value-vs-quality scatter as a PNG for the CLI
+# (backend/app/screening/render.py). The API returns scatter points as JSON and
+# the CLI always draws an ASCII scatter, so this stays out of runtime requirements.
+matplotlib==3.10.7

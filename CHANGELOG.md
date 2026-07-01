@@ -3,6 +3,44 @@
 Notable changes to **sec_analyzer**. The design keeps the AI *last* — every score is
 explainable; the LLM only narrates on top of the numbers.
 
+## [Unreleased] — 2026-07-01
+
+### Cross-sectional fundamental screen (new endpoint)
+
+Rank a **universe of tickers** against each other on five classic quant metrics,
+flag distress + earnings-quality risks, and return a ranked, color-coded table plus
+a value-vs-quality scatter. Additive — its own dimension; `/analyze` is untouched.
+
+- **New `POST /screen` endpoint** (`{tickers:[…], ingest?, fetch_market_caps?}`) and a
+  **`python -m backend.screen`** CLI (ANSI table + ASCII scatter, and a matplotlib PNG
+  when available). Universe capped at 60; unresolved / no-data tickers reported, not
+  dropped.
+- **Metrics** (`backend/app/screening/metrics.py`, pure math): **Piotroski F-Score**
+  (9 binary tests), **Altman Z** (classic with a market cap, else book-value **Z″**),
+  **Sloan accruals**, **ROIC** (NOPAT ÷ invested capital), **FCF yield**. Every formula
+  degrades to `null` rather than raising.
+- **Cross-sectional ranking** (`ranking.py`): min-max percentile ranks → a **quality**
+  axis (F-Score + ROIC + low accruals) and a **value** axis (FCF yield); flags
+  **distress** (low Z) and **earnings-quality risk** (accruals ≥ 0.10 or worst quartile).
+- **Rendering** (`render.py`): shared color bands drive an ANSI/plain table, an ASCII
+  scatter, machine-readable scatter points + per-cell color names for the frontend, and
+  an optional headless-matplotlib PNG.
+- **New `fundamentals_history.py`** — a clean year-over-year annual snapshot keyed by
+  fact **`end_date`** (never the unreliable `fy`), latest-filed-per-period so the series
+  is restatement-aware. This is what makes the YoY Piotroski/Altman inputs correct.
+- **XBRL ingestion widened** — current assets/liabilities, retained earnings, cost of
+  revenue, income-tax + pre-tax income, and the `PaymentsToAcquireProductiveAssets`
+  capex concept (NVIDIA/Ford). Total `Liabilities`, which many filers never tag (e.g.
+  Coca-Cola), is derived from the accounting identity `assets − equity` so Altman stays
+  scorable.
+- **Market caps** via a lazy `yfinance` fetch (`market_data.py`), best-effort — no cap
+  just means book-value Altman and no FCF yield for that name.
+- **Tests:** ~50 new fully-offline tests (metric math vs hand calcs, the `end_date`
+  extractor incl. restatement + interim-form exclusion, ranking/flags, rendering, the
+  orchestrator over a seeded DB, and endpoint wiring).
+- **Docs:** `docs/screen.md` (frontend handoff), `…types.ts`, generated `…sample.json`;
+  README + this changelog updated. `matplotlib` added to `requirements-dev.txt` only.
+
 ## [Unreleased] — 2026-06-29
 
 ### Factor exposure & performance attribution (new endpoint)

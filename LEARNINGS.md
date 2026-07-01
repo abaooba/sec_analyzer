@@ -1143,10 +1143,34 @@ Gate green: **pytest 141 → 181 (+40)**, ruff over all of `backend`, mypy over
   `3062ac0` + CLI `ad543d1`). Test-debt + docs + CHANGELOG done. Only backtesting
   remains → **parked** (needs external price/outcome data). (T3 async rewrite
   deferred-by-judgment — invasive, attended only.)
-- **T5 REACH FEATURES** — 🟦 **first one shipped**: **factor exposure & attribution**
+- **T5 REACH FEATURES** — 🟦 **two shipped**: **factor exposure & attribution**
   (`/factor-attribution`, 2026-06-29) — Fama-French 5 + Momentum betas/alpha + rolling +
   attribution waterfall; added a price source (yfinance) + factor source (Ken French).
-  Still ⬜ **parked**: insider/institutional, peer-relative, RAG Q&A, frontend,
-  watchlist/alerts, PDF export — most need new external data sources or are large scope
-  → an attended / user-directed effort. (The contradiction detector originally listed
-  here shipped under T4.)
+  And **cross-sectional fundamental screen** (`/screen` + `backend/screen.py`, 2026-07-01)
+  — Piotroski F-Score / Altman Z / Sloan accruals / ROIC / FCF yield, ranked
+  cross-sectionally with distress + earnings-quality flags, a color-coded table, and a
+  value-vs-quality scatter (peer-relative was a parked T5 item; this delivers it).
+  Still ⬜ **parked**: insider/institutional, RAG Q&A, frontend, watchlist/alerts,
+  PDF export — most need new external data sources or are large scope → an attended /
+  user-directed effort. (The contradiction detector originally listed here shipped
+  under T4.)
+
+  **Screen — key gotchas (the non-obvious 20%):**
+  - **companyfacts `fy`/`fp` are the *filing's* period, not the value's.** A FY2025
+    10-K repeats the prior year's balance sheet tagged `fy=2025`, so grouping by `fy`
+    silently mixes periods (Apple's 2022 equity showed up under "2025"). The authoritative
+    period key is **`end_date`**; group by it, take latest-filed per period → correct and
+    restatement-aware. This is the whole basis of `fundamentals_history.py`.
+  - **Two DB files exist.** `resolve_storage_path` prefers `backend/sec_analyzer.db` over
+    the repo-root one, so the app writes/reads the backend copy — raw `sqlite3` on the root
+    file (Apple-only) disagrees with what the app sees. Query `settings.database_url`.
+  - **Filers don't tag what you'd expect.** KO never tags total `us-gaap:Liabilities`
+    (derive `assets − equity`); NVIDIA/Ford dropped `PaymentsToAcquirePropertyPlantAndEquipment`
+    for `PaymentsToAcquireProductiveAssets` post-~2020. Both handled; every metric degrades
+    to `null`, never raises.
+  - **Altman needs the right model.** With a market cap → classic Z (distress `< 1.81`);
+    without → book-value **Z″** (distress `< 1.1`). Z″ is conservative for thin-book-equity
+    names (Apple's Z″ = 2.3 "grey" vs classic 11.4 "safe"); report `altman_model` + `zone`.
+  - **Percentiles: min-max, not mean-rank.** Mean-rank compresses n=3 to [16.7, 83.3] and
+    bunches scatter markers mid-plane; min-max (best→100, worst→0, ties averaged) spans the
+    full plane and reads intuitively.

@@ -43,6 +43,18 @@ class Holding(BaseModel):
     weight: float = 1.0
 
 
+class ScreenRequest(BaseModel):
+    """Request body for /screen: a universe of tickers to rank cross-sectionally.
+
+    `ingest` (default true) downloads each company's XBRL facts before scoring;
+    set false to screen only what's already in the DB. `fetch_market_caps`
+    (default true) pulls market caps for FCF yield + the classic Altman model.
+    """
+    tickers: list[str]
+    ingest: bool = True
+    fetch_market_caps: bool = True
+
+
 class FactorAttributionRequest(BaseModel):
     """Request body for /factor-attribution.
 
@@ -77,6 +89,29 @@ def analyze(req: AnalyzeRequest):
     finally:
         # Always clear the on-disk HTML cache, even if analysis raised.
         delete_local_filings_for_company(cik)
+
+
+@app.post("/screen")
+def screen(req: ScreenRequest):
+    """Rank a universe of tickers on Piotroski / Altman Z / accruals / ROIC / FCF
+    yield, flag distress and earnings-quality risks, and return a plot-ready
+    value-vs-quality result.
+
+    Imported lazily so the screen's stack (and its optional yfinance market-cap
+    fetch) stays off app startup and off the /analyze path — it loads only when
+    this endpoint is actually hit.
+    """
+    from backend.app.screening.service import run_screen
+
+    if not req.tickers:
+        return {"error": "Provide a non-empty 'tickers' list."}
+
+    init_db()  # ensure tables exist before the facts ingest writes to them
+    return run_screen(
+        req.tickers,
+        ingest=req.ingest,
+        fetch_market_caps=req.fetch_market_caps,
+    )
 
 
 @app.post("/factor-attribution")
